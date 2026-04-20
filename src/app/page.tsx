@@ -28,6 +28,7 @@ export default function HomePage() {
             meta={meta}
             layer={layer}
             showChunkGrid={showChunkGrid}
+            selected={selected}
             onHover={setHover}
             onSelect={setSelected}
           />

@@ -20,6 +20,7 @@ interface Props {
   meta: WorldMeta;
   layer: LayerKey;
   showChunkGrid?: boolean;
+  selected?: HoverInfo | null;
   onHover: (info: HoverInfo | null) => void;
   onSelect?: (info: HoverInfo) => void;
 }
@@ -62,7 +63,7 @@ function wrapIndex(i: number, n: number) {
   return ((i % n) + n) % n;
 }
 
-export default function MapCanvas({ meta, layer, showChunkGrid = true, onHover, onSelect }: Props) {
+export default function MapCanvas({ meta, layer, showChunkGrid = true, selected, onHover, onSelect }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
 
@@ -306,9 +307,37 @@ export default function MapCanvas({ meta, layer, showChunkGrid = true, onHover, 
       ctx.stroke();
       ctx.restore();
     }
+
+    // Selected-cell white outline. The world wraps, so shift the selected
+    // world coords to the instance nearest the camera centre before projecting.
+    if (selected) {
+      let wx = selected.worldX;
+      let wy = selected.worldY;
+      const dx = wx - camera.cx;
+      if (dx > meta.width / 2) wx -= meta.width;
+      else if (dx < -meta.width / 2) wx += meta.width;
+      const dy = wy - camera.cy;
+      if (dy > meta.height / 2) wy -= meta.height;
+      else if (dy < -meta.height / 2) wy += meta.height;
+
+      const sx = (wx - worldLeft) * ppc;
+      const sy = (wy - worldTop) * ppc;
+      const sSize = ppc;
+      if (sx + sSize >= 0 && sy + sSize >= 0 && sx <= size.w && sy <= size.h) {
+        ctx.save();
+        // Outer dark stroke for contrast, inner white stroke on top.
+        ctx.lineWidth = Math.max(3, Math.min(5, ppc * 0.3));
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.75)';
+        ctx.strokeRect(sx, sy, sSize, sSize);
+        ctx.lineWidth = Math.max(1.5, Math.min(2.5, ppc * 0.18));
+        ctx.strokeStyle = '#ffffff';
+        ctx.strokeRect(sx, sy, sSize, sSize);
+        ctx.restore();
+      }
+    }
   }, [
-    visibleChunks, camera.ppc, size.w, size.h, layer, showChunkGrid,
-    cs, chunksW, chunksH, paintChunkCanvas, cacheTick,
+    visibleChunks, camera.ppc, camera.cx, camera.cy, size.w, size.h, layer, showChunkGrid,
+    cs, chunksW, chunksH, paintChunkCanvas, cacheTick, selected, meta.width, meta.height,
   ]);
 
   // ---- Screen -> world, wrapped ----

@@ -37,6 +37,26 @@ export interface ViewportResponse {
   }>;
 }
 
+export interface ChunkEntryResponse {
+  cx: number;
+  cy: number;
+  size: number;
+  layers: Partial<{
+    height: number[];
+    groundType: string[];
+    waterDepth: number[];
+    moveCost: number[];
+    blocksVision: number[];
+  }>;
+}
+
+export interface ChunksResponse {
+  wrap: WrapMode;
+  worldWidth: number;
+  worldHeight: number;
+  chunks: ChunkEntryResponse[];
+}
+
 export interface CellResponse {
   x: number;
   y: number;

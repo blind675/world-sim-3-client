@@ -1,4 +1,10 @@
-import type { CellResponse, LayerName, ViewportResponse, WorldMeta } from './types';
+import type {
+  CellResponse,
+  ChunksResponse,
+  LayerName,
+  ViewportResponse,
+  WorldMeta,
+} from './types';
 
 const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
 
@@ -28,6 +34,25 @@ export function fetchViewport(
     layers: params.layers.join(','),
   });
   return getJson<ViewportResponse>(`/api/world/viewport?${q.toString()}`, signal);
+}
+
+export async function fetchChunks(
+  chunks: Array<{ cx: number; cy: number }>,
+  layers: LayerName[],
+  signal?: AbortSignal,
+): Promise<ChunksResponse> {
+  const res = await fetch(`${BASE}/api/world/chunks`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chunks, layers }),
+    signal,
+    cache: 'no-store',
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`POST /api/world/chunks failed: ${res.status} ${text}`);
+  }
+  return res.json() as Promise<ChunksResponse>;
 }
 
 export function fetchCell(x: number, y: number, signal?: AbortSignal) {

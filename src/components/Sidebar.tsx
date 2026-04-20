@@ -10,6 +10,8 @@ interface Props {
   hover: HoverInfo | null;
   selected: HoverInfo | null;
   backendOk: boolean;
+  showChunkGrid: boolean;
+  onToggleChunkGrid: (v: boolean) => void;
 }
 
 function row(label: string, value: React.ReactNode) {
@@ -21,7 +23,7 @@ function row(label: string, value: React.ReactNode) {
   );
 }
 
-export default function Sidebar({ meta, layer, onLayer, hover, selected, backendOk }: Props) {
+export default function Sidebar({ meta, layer, onLayer, hover, selected, backendOk, showChunkGrid, onToggleChunkGrid }: Props) {
   return (
     <aside className="w-72 shrink-0 bg-panel border-l border-white/5 p-4 flex flex-col gap-4 overflow-y-auto">
       <div>
@@ -56,16 +58,31 @@ export default function Sidebar({ meta, layer, onLayer, hover, selected, backend
             <button
               key={l}
               onClick={() => onLayer(l)}
-              className={`text-xs px-2 py-1 rounded border transition ${
-                layer === l
+              className={`text-xs px-2 py-1 rounded border transition ${layer === l
                   ? 'bg-accent/20 border-accent text-accent'
                   : 'bg-black/20 border-white/10 text-gray-300 hover:bg-white/5'
-              }`}
+                }`}
             >
               {l}
             </button>
           ))}
         </div>
+      </section>
+
+      <section className="bg-panelSoft rounded p-3">
+        <h2 className="text-xs uppercase text-gray-400 mb-2">Overlays</h2>
+        <label className="flex items-center gap-2 text-xs cursor-pointer">
+          <input
+            type="checkbox"
+            checked={showChunkGrid}
+            onChange={(e) => onToggleChunkGrid(e.target.checked)}
+            className="accent-red-500"
+          />
+          <span>Chunk grid</span>
+          <span className="ml-auto text-gray-500">
+            {meta ? `${meta.chunkSize}×${meta.chunkSize}` : ''}
+          </span>
+        </label>
       </section>
 
       <section className="bg-panelSoft rounded p-3">

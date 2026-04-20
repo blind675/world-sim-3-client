@@ -57,6 +57,24 @@ export interface ChunksResponse {
   chunks: ChunkEntryResponse[];
 }
 
+export type WorldObjectType = 'tree' | 'rock' | 'food' | 'water_source' | 'rest_spot';
+
+export interface WorldObject {
+  id: string;
+  type: WorldObjectType;
+  x: number;
+  y: number;
+}
+
+export interface EntitiesInViewResponse {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  objectCount: number;
+  objects: WorldObject[];
+}
+
 export interface CellResponse {
   x: number;
   y: number;

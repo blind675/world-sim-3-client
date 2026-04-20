@@ -4,15 +4,18 @@ import { useEffect, useState } from 'react';
 import MapCanvas, { HoverInfo } from '@/components/MapCanvas';
 import Sidebar from '@/components/Sidebar';
 import { fetchMeta } from '@/lib/api';
-import type { WorldMeta } from '@/lib/types';
+import type { WorldMeta, WorldObject } from '@/lib/types';
 
 export default function HomePage() {
   const [meta, setMeta] = useState<WorldMeta | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [layer, setLayer] = useState<'height' | 'groundType' | 'waterDepth'>('height');
   const [hover, setHover] = useState<HoverInfo | null>(null);
+  const [hoverObject, setHoverObject] = useState<WorldObject | null>(null);
   const [selected, setSelected] = useState<HoverInfo | null>(null);
+  const [selectedObject, setSelectedObject] = useState<WorldObject | null>(null);
   const [showChunkGrid, setShowChunkGrid] = useState(true);
+  const [showObjects, setShowObjects] = useState(true);
 
   useEffect(() => {
     fetchMeta()
@@ -28,9 +31,13 @@ export default function HomePage() {
             meta={meta}
             layer={layer}
             showChunkGrid={showChunkGrid}
+            showObjects={showObjects}
             selected={selected}
+            selectedObject={selectedObject}
             onHover={setHover}
-            onSelect={setSelected}
+            onHoverObject={setHoverObject}
+            onSelect={(info) => { setSelectedObject(null); setSelected(info); }}
+            onSelectObject={setSelectedObject}
           />
         ) : (
           <div className="h-full flex items-center justify-center text-sm text-gray-400">
@@ -51,10 +58,14 @@ export default function HomePage() {
         layer={layer}
         onLayer={setLayer}
         hover={hover}
+        hoverObject={hoverObject}
         selected={selected}
+        selectedObject={selectedObject}
         backendOk={!!meta && !error}
         showChunkGrid={showChunkGrid}
         onToggleChunkGrid={setShowChunkGrid}
+        showObjects={showObjects}
+        onToggleObjects={setShowObjects}
       />
     </div>
   );

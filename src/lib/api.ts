@@ -1,9 +1,11 @@
 import type {
   CellResponse,
   ChunksResponse,
+  EntitiesInViewResponse,
   LayerName,
   ViewportResponse,
   WorldMeta,
+  WorldObjectType,
 } from './types';
 
 const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
@@ -53,6 +55,20 @@ export async function fetchChunks(
     throw new Error(`POST /api/world/chunks failed: ${res.status} ${text}`);
   }
   return res.json() as Promise<ChunksResponse>;
+}
+
+export function fetchEntitiesInView(
+  params: { x: number; y: number; w: number; h: number; types?: WorldObjectType[] },
+  signal?: AbortSignal,
+) {
+  const q = new URLSearchParams({
+    x: String(params.x),
+    y: String(params.y),
+    w: String(params.w),
+    h: String(params.h),
+  });
+  if (params.types && params.types.length > 0) q.set('types', params.types.join(','));
+  return getJson<EntitiesInViewResponse>(`/api/entities/in-view?${q.toString()}`, signal);
 }
 
 export function fetchCell(x: number, y: number, signal?: AbortSignal) {

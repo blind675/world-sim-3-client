@@ -1,8 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { fetchChunks, fetchEntitiesInView } from '@/lib/api';
-import type { LayerName, WorldMeta, WorldObject } from '@/lib/types';
+import { fetchChunks, fetchEntitiesInView, fetchAllAgents } from '@/lib/api';
+import type {
+  AgentInViewEntity,
+  LayerName,
+  WorldMeta,
+  WorldObject,
+} from '@/lib/types';
 import { groundColor, heightColor, waterDepthColor } from '@/lib/color';
 
 export interface HoverInfo {
@@ -23,10 +28,12 @@ interface Props {
   showObjects?: boolean;
   selected?: HoverInfo | null;
   selectedObject?: WorldObject | null;
-  onHover: (info: HoverInfo | null) => void;
-  onHoverObject?: (obj: WorldObject | null) => void;
+  selectedAgentId?: string | null;
+  selectedAgentPath?: { x: number; y: number }[] | null;
+  refreshKey?: number; // bump to force a re-fetch of entities-in-view
   onSelect?: (info: HoverInfo) => void;
   onSelectObject?: (obj: WorldObject | null) => void;
+  onSelectAgent?: (a: AgentInViewEntity | null) => void;
 }
 
 interface Camera {
@@ -70,14 +77,16 @@ function wrapIndex(i: number, n: number) {
 export default function MapCanvas({
   meta,
   layer,
-  showChunkGrid = true,
-  showObjects = true,
+  showChunkGrid,
+  showObjects,
   selected,
   selectedObject,
-  onHover,
-  onHoverObject,
+  selectedAgentId,
+  selectedAgentPath,
+  refreshKey = 0,
   onSelect,
   onSelectObject,
+  onSelectAgent,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -89,6 +98,23 @@ export default function MapCanvas({
     ppc: 3,
   }));
 
+  // Initialize camera to focus on first agent after meta loads
+  useEffect(() => {
+    if (meta.width > 0) {
+      fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000'}/api/agents`)
+        .then(res => res.json())
+        .then(data => {
+          console.log('Camera init: fetched agents:', data.agents?.length || 0);
+          if (data.agents && data.agents.length > 0) {
+            const firstAgent = data.agents[0];
+            console.log('Camera init: positioning to agent', firstAgent.id, 'at', firstAgent.x, firstAgent.y);
+            setCamera(prev => ({ ...prev, cx: firstAgent.x, cy: firstAgent.y }));
+          }
+        })
+        .catch(err => console.error('Failed to fetch agents for camera init:', err));
+    }
+  }, [meta.width]);
+
   // Chunk caches kept in refs so renders don't invalidate them.
   const chunksRef = useRef<Map<string, ChunkEntry>>(new Map());
   const inFlightRef = useRef<Set<string>>(new Set());
@@ -98,6 +124,12 @@ export default function MapCanvas({
   // Static objects visible in the current view. Refetched when the set of
   // visible chunks changes. Kept in state so React triggers a repaint.
   const [objectsInView, setObjectsInView] = useState<WorldObject[]>([]);
+  const [agentsInView, setAgentsInView] = useState<AgentInViewEntity[]>([]);
+  const [tooltip, setTooltip] = useState<{
+    x: number;
+    y: number;
+    content: string;
+  } | null>(null);
 
   const cs = meta.chunkSize;
   const chunksW = Math.floor(meta.width / cs);
@@ -228,28 +260,51 @@ export default function MapCanvas({
   // Keyed on the visible chunk range so we don't refetch on every pan pixel.
   // A small AbortController cancels stale requests when the view moves quickly.
   useEffect(() => {
-    if (!showObjects) {
-      setObjectsInView([]);
-      return;
-    }
     const { cxMin, cyMin, cxMax, cyMax } = visibleChunks;
     const x = cxMin * cs;
     const y = cyMin * cs;
     const w = (cxMax - cxMin + 1) * cs;
     const h = (cyMax - cyMin + 1) * cs;
+    const types = showObjects
+      ? (['tree', 'rock', 'food', 'water_source', 'rest_spot', 'agent'] as const)
+      : (['agent'] as const);
     const ac = new AbortController();
-    fetchEntitiesInView(
-      { x, y, w, h, types: ['tree', 'rock', 'food', 'water_source', 'rest_spot'] },
-      ac.signal,
-    )
-      .then((resp) => setObjectsInView(resp.objects))
+    fetchEntitiesInView({ x, y, w, h, types: [...types] }, ac.signal)
+      .then((resp) => {
+        console.log('Entities fetch: viewport', { x, y, w, h }, 'returned', resp.objects.length, 'objects');
+        const objs: WorldObject[] = [];
+        const ags: AgentInViewEntity[] = [];
+        for (const e of resp.objects) {
+          if (e.type === 'agent') ags.push(e);
+          else objs.push(e);
+        }
+        console.log('Entities fetch: found', ags.length, 'agents in viewport');
+        setObjectsInView(showObjects ? objs : []);
+        setAgentsInView(ags);
+      })
       .catch((err) => {
         if (err?.name === 'AbortError') return;
         // eslint-disable-next-line no-console
         console.error('entities fetch failed', err);
       });
     return () => ac.abort();
-  }, [visibleChunks, cs, showObjects]);
+  }, [visibleChunks, cs, showObjects, refreshKey]);
+
+  // ---- Real-time agent animation polling ----
+  useEffect(() => {
+    // Poll for agent positions every 100ms for smooth animation
+    const pollInterval = setInterval(async () => {
+      try {
+        const allAgents = await fetchAllAgents();
+        setAgentsInView(allAgents);
+      } catch (error) {
+        // Silently fail to avoid spamming console during polling
+        // Errors will be caught by the viewport fetch above
+      }
+    }, 100);
+
+    return () => clearInterval(pollInterval);
+  }, []);
 
   // ---- Paint a single chunk's data into a 128x128 cached canvas for the active layer. ----
   const paintChunkCanvas = useCallback(
@@ -594,6 +649,132 @@ export default function MapCanvas({
       }
     }
 
+    // ---- Selected agent's path polyline ----
+    if (selectedAgentId && selectedAgentPath && selectedAgentPath.length > 0) {
+      const W = meta.width;
+      const H = meta.height;
+      const selAgent = agentsInView.find((a) => a.id === selectedAgentId);
+      const startX = selAgent ? selAgent.x + 0.5 : null;
+      const startY = selAgent ? selAgent.y + 0.5 : null;
+
+      // Build points shifted to the instance nearest the camera centre to
+      // avoid seam-crossing lines. We also break the polyline whenever the
+      // delta between consecutive path cells exceeds half a world (wrap jump).
+      ctx.save();
+      ctx.lineWidth = Math.max(1.5, Math.min(3, ppc * 0.2));
+      ctx.strokeStyle = 'rgba(255, 220, 90, 0.9)';
+      ctx.beginPath();
+
+      const toScreen = (wx: number, wy: number) => {
+        let x = wx;
+        let y = wy;
+        const dxw = x - camera.cx;
+        if (dxw > W / 2) x -= W; else if (dxw < -W / 2) x += W;
+        const dyw = y - camera.cy;
+        if (dyw > H / 2) y -= H; else if (dyw < -H / 2) y += H;
+        return { sx: (x - worldLeft) * ppc, sy: (y - worldTop) * ppc };
+      };
+
+      let prev: { x: number; y: number } | null = null;
+      if (startX !== null && startY !== null) {
+        const { sx, sy } = toScreen(startX, startY);
+        ctx.moveTo(sx, sy);
+        prev = { x: startX, y: startY };
+      }
+      for (const p of selectedAgentPath) {
+        const px = p.x + 0.5;
+        const py = p.y + 0.5;
+        const { sx, sy } = toScreen(px, py);
+        if (prev) {
+          let dx = px - prev.x;
+          let dy = py - prev.y;
+          if (dx > W / 2) dx -= W; else if (dx < -W / 2) dx += W;
+          if (dy > H / 2) dy -= H; else if (dy < -H / 2) dy += H;
+          // Only treat as wrap-jump if the delta is very large; normal 1-cell
+          // steps always draw a line.
+          if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
+            ctx.moveTo(sx, sy);
+          } else {
+            ctx.lineTo(sx, sy);
+          }
+        } else {
+          ctx.moveTo(sx, sy);
+        }
+        prev = { x: px, y: py };
+      }
+      ctx.stroke();
+
+      // Target marker at the end of the path.
+      const end = selectedAgentPath[selectedAgentPath.length - 1];
+      if (end) {
+        const { sx, sy } = toScreen(end.x + 0.5, end.y + 0.5);
+        ctx.fillStyle = 'rgba(255, 220, 90, 0.95)';
+        ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(sx, sy, Math.max(3, Math.min(6, ppc * 0.45)), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // ---- Agents overlay ----
+    if (agentsInView.length > 0) {
+      const W = meta.width;
+      const H = meta.height;
+      const agentR = Math.max(3, Math.min(8, ppc * 1.0));
+      for (const a of agentsInView) {
+        let wx = a.x + 0.5;
+        let wy = a.y + 0.5;
+        const dxw = wx - camera.cx;
+        if (dxw > W / 2) wx -= W; else if (dxw < -W / 2) wx += W;
+        const dyw = wy - camera.cy;
+        if (dyw > H / 2) wy -= H; else if (dyw < -H / 2) wy += H;
+        const sx = (wx - worldLeft) * ppc;
+        const sy = (wy - worldTop) * ppc;
+        if (sx < -16 || sy < -16 || sx > size.w + 16 || sy > size.h + 16) continue;
+
+        const isSelected = selectedAgentId && a.id === selectedAgentId;
+        // Body: filled circle
+        ctx.beginPath();
+        ctx.fillStyle = '#ffb84d';
+        ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+        ctx.lineWidth = 1.2;
+        ctx.arc(sx, sy, agentR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Facing arrow / notch.
+        const fx = Math.cos(a.facing);
+        const fy = Math.sin(a.facing);
+        const tipX = sx + fx * agentR * 1.55;
+        const tipY = sy + fy * agentR * 1.55;
+        const leftX = sx + (-fy) * agentR * 0.55 + fx * agentR * 0.4;
+        const leftY = sy + (fx) * agentR * 0.55 + fy * agentR * 0.4;
+        const rightX = sx + (fy) * agentR * 0.55 + fx * agentR * 0.4;
+        const rightY = sy + (-fx) * agentR * 0.55 + fy * agentR * 0.4;
+        ctx.beginPath();
+        ctx.fillStyle = '#7a3d00';
+        ctx.moveTo(tipX, tipY);
+        ctx.lineTo(leftX, leftY);
+        ctx.lineTo(rightX, rightY);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        if (isSelected) {
+          ctx.save();
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(sx, sy, agentR + 3, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+    }
+
     // Chunk grid overlay.
     if (showChunkGrid && cs * ppc >= 4) {
       const firstVx = Math.ceil(worldLeft / cs) * cs;
@@ -647,6 +828,7 @@ export default function MapCanvas({
     visibleChunks, camera.ppc, camera.cx, camera.cy, size.w, size.h, layer, showChunkGrid,
     cs, chunksW, chunksH, paintChunkCanvas, cacheTick, selected, meta.width, meta.height,
     showObjects, objectsInView, selectedObject,
+    agentsInView, selectedAgentId, selectedAgentPath,
   ]);
 
   // ---- Screen -> world, wrapped ----
@@ -723,6 +905,35 @@ export default function MapCanvas({
     [showObjects, objectsInView, meta.width, meta.height, camera.cx, camera.cy, camera.ppc, size.w, size.h],
   );
 
+  const pickAgent = useCallback(
+    (sx: number, sy: number, pxThreshold = 12): AgentInViewEntity | null => {
+      if (agentsInView.length === 0) return null;
+      const W = meta.width;
+      const H = meta.height;
+      const ppc = camera.ppc;
+      const worldLeft = camera.cx - size.w / (2 * ppc);
+      const worldTop = camera.cy - size.h / (2 * ppc);
+      let best: AgentInViewEntity | null = null;
+      let bestD2 = pxThreshold * pxThreshold;
+      for (const a of agentsInView) {
+        let wx = a.x + 0.5;
+        let wy = a.y + 0.5;
+        const dxw = wx - camera.cx;
+        if (dxw > W / 2) wx -= W; else if (dxw < -W / 2) wx += W;
+        const dyw = wy - camera.cy;
+        if (dyw > H / 2) wy -= H; else if (dyw < -H / 2) wy += H;
+        const osx = (wx - worldLeft) * ppc;
+        const osy = (wy - worldTop) * ppc;
+        const dx = osx - sx;
+        const dy = osy - sy;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < bestD2) { bestD2 = d2; best = a; }
+      }
+      return best;
+    },
+    [agentsInView, meta.width, meta.height, camera.cx, camera.cy, camera.ppc, size.w, size.h],
+  );
+
   // ---- Pan / zoom / hover / click ----
   const dragRef = useRef<{ active: boolean; startX: number; startY: number; camCx: number; camCy: number } | null>(null);
 
@@ -743,18 +954,40 @@ export default function MapCanvas({
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const sx = e.clientX - rect.left;
     const sy = e.clientY - rect.top;
-    if (dragRef.current && dragRef.current.active) {
-      const dx = (e.clientX - dragRef.current.startX) / camera.ppc;
-      const dy = (e.clientY - dragRef.current.startY) / camera.ppc;
+    if (dragRef.current?.active) {
+      const dx = e.clientX - dragRef.current.startX;
+      const dy = e.clientY - dragRef.current.startY;
       setCamera((c) => ({ ...c, cx: dragRef.current!.camCx - dx, cy: dragRef.current!.camCy - dy }));
+      return;
     }
+
+    // Generate tooltip content
     const { x, y } = screenToWorld(sx, sy);
-    onHover(sampleWorld(x, y));
-    if (onHoverObject) onHoverObject(pickObject(sx, sy));
+    const worldInfo = sampleWorld(x, y);
+    const hovAgent = pickAgent(sx, sy);
+    const hovObject = hovAgent ? null : pickObject(sx, sy);
+
+    let content = '';
+    if (hovAgent) {
+      content = `Agent ${hovAgent.id}\nPosition: ${hovAgent.x}, ${hovAgent.y}\nState: ${hovAgent.state}`;
+    } else if (hovObject) {
+      content = `${hovObject.type} ${hovObject.id}\nPosition: ${hovObject.x}, ${hovObject.y}`;
+    } else {
+      content = `Position: ${Math.floor(worldInfo.worldX)}, ${Math.floor(worldInfo.worldY)}`;
+      if (worldInfo.height != null) content += `\nHeight: ${worldInfo.height.toFixed(2)}m`;
+      if (worldInfo.groundType) content += `\nGround: ${worldInfo.groundType}`;
+      if (worldInfo.waterDepth != null && worldInfo.waterDepth > 0) content += `\nWater: ${worldInfo.waterDepth.toFixed(2)}m`;
+      if (worldInfo.moveCost != null) content += `\nMove cost: ${worldInfo.moveCost.toFixed(2)}`;
+    }
+
+    setTooltip({
+      x: e.clientX,
+      y: e.clientY,
+      content
+    });
   };
   const onMouseLeave = () => {
-    onHover(null);
-    if (onHoverObject) onHoverObject(null);
+    setTooltip(null);
     if (dragRef.current) dragRef.current.active = false;
     dragRef.current = null;
   };
@@ -780,17 +1013,33 @@ export default function MapCanvas({
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const sx = e.clientX - rect.left;
     const sy = e.clientY - rect.top;
-    // Objects win over cell selection when the click lands on one.
+
+
+    // Agents win over objects and cell selection when the click lands on one.
+    const hitAgent = pickAgent(sx, sy);
+    if (hitAgent) {
+      if (onSelectAgent) onSelectAgent(hitAgent);
+      if (onSelectObject) onSelectObject(null);
+      return;
+    }
+    // Objects next.
     const hitObj = pickObject(sx, sy);
     if (hitObj) {
       if (onSelectObject) onSelectObject(hitObj);
+      if (onSelectAgent) onSelectAgent(null);
       return;
     }
-    // Clicking empty space clears any object selection.
+    // Empty space: clear object + agent selection, pin the tile.
     if (onSelectObject) onSelectObject(null);
+    if (onSelectAgent) onSelectAgent(null);
     const { x, y } = screenToWorld(sx, sy);
     const info = sampleWorld(x, y);
     if (onSelect) onSelect(info);
+  };
+
+  const onContextMenu = (e: React.MouseEvent) => {
+    // Right-click disabled - simulation runs automatically
+    e.preventDefault();
   };
 
   // ---- Loading indicator stats ----
@@ -813,6 +1062,7 @@ export default function MapCanvas({
         onMouseLeave={onMouseLeave}
         onWheel={onWheel}
         onClick={onClick}
+        onContextMenu={onContextMenu}
         className="block w-full h-full cursor-crosshair select-none"
       />
       <div className="pointer-events-none absolute bottom-2 left-2 text-xs bg-black/60 px-2 py-1 rounded">
@@ -821,7 +1071,22 @@ export default function MapCanvas({
         &nbsp;|&nbsp; center: {Math.round(camera.cx)}, {Math.round(camera.cy)}
         &nbsp;|&nbsp; chunks: {readyCount} cached{loadingCount > 0 ? ` · ${loadingCount} loading…` : ''}
         {showObjects ? <>&nbsp;|&nbsp; objects: {objectsInView.length}</> : null}
+        &nbsp;|&nbsp; agents: {agentsInView.length}
       </div>
+
+      {/* Tooltip */}
+      {tooltip && (
+        <div
+          className="pointer-events-none absolute bg-black/90 text-white text-xs px-2 py-1 rounded shadow-lg border border-white/20 whitespace-pre-line"
+          style={{
+            left: `${tooltip.x + 10}px`,
+            top: `${tooltip.y - 30}px`,
+            transform: 'translateY(-100%)'
+          }}
+        >
+          {tooltip.content}
+        </div>
+      )}
     </div>
   );
 }

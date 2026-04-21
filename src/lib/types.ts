@@ -58,6 +58,7 @@ export interface ChunksResponse {
 }
 
 export type WorldObjectType = 'tree' | 'rock' | 'food' | 'water_source' | 'rest_spot';
+export type EntityType = WorldObjectType | 'agent';
 
 export interface WorldObject {
   id: string;
@@ -66,13 +67,71 @@ export interface WorldObject {
   y: number;
 }
 
+export interface AgentInViewEntity {
+  id: string;
+  type: 'agent';
+  x: number;
+  y: number;
+  facing: number;
+  state: string;
+}
+
+export type InViewEntity = WorldObject | AgentInViewEntity;
+
 export interface EntitiesInViewResponse {
   x: number;
   y: number;
   w: number;
   h: number;
   objectCount: number;
-  objects: WorldObject[];
+  agentCount?: number;
+  objects: InViewEntity[];
+}
+
+export interface AgentTraits {
+  visionRange: number;
+  memoryCapacity: number;
+  memoryDecayRate: number;
+  moveSpeed: number;
+}
+
+export interface AgentSummary {
+  id: string;
+  x: number;
+  y: number;
+  facing: number;
+  sex: 'female' | 'male';
+  age: number;
+  state: string;
+  currentGoal: string | null;
+  currentAction: string | null;
+  targetId: string | null;
+  hunger: number;
+  thirst: number;
+  tiredness: number;
+  traits: AgentTraits;
+  pathLength: number;
+  pathIndex: number;
+  pathRemaining: number;
+}
+
+export interface AgentDetail extends AgentSummary {
+  inventory: unknown[];
+  memory: unknown[];
+  path: { x: number; y: number }[];
+}
+
+export interface PathResponse {
+  id: string;
+  from: { x: number; y: number };
+  to: { x: number; y: number };
+  length: number;
+  path: { x: number; y: number }[];
+}
+
+export interface SimStepResponse {
+  steps: number;
+  agents: AgentSummary[];
 }
 
 export interface CellResponse {

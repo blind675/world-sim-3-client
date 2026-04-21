@@ -1,26 +1,65 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import MapCanvas, { HoverInfo } from '@/components/MapCanvas';
 import Sidebar from '@/components/Sidebar';
-import { fetchMeta } from '@/lib/api';
-import type { WorldMeta, WorldObject } from '@/lib/types';
+import { fetchAgent, fetchMeta, postAgentPath, postSimStep, fetchSimulationStatus } from '@/lib/api';
+import type {
+  AgentDetail,
+  AgentInViewEntity,
+  WorldMeta,
+  WorldObject,
+} from '@/lib/types';
 
 export default function HomePage() {
   const [meta, setMeta] = useState<WorldMeta | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [layer, setLayer] = useState<'height' | 'groundType' | 'waterDepth'>('height');
-  const [hover, setHover] = useState<HoverInfo | null>(null);
-  const [hoverObject, setHoverObject] = useState<WorldObject | null>(null);
   const [selected, setSelected] = useState<HoverInfo | null>(null);
   const [selectedObject, setSelectedObject] = useState<WorldObject | null>(null);
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const [selectedAgent, setSelectedAgent] = useState<AgentDetail | null>(null);
   const [showChunkGrid, setShowChunkGrid] = useState(true);
   const [showObjects, setShowObjects] = useState(true);
+  const [tickCount, setTickCount] = useState(0);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     fetchMeta()
       .then(setMeta)
       .catch((e) => setError(String(e)));
+  }, []);
+
+  // Refetch selected agent detail whenever selection changes or sim advances.
+  useEffect(() => {
+    if (!selectedAgentId) { setSelectedAgent(null); return; }
+    const ac = new AbortController();
+    fetchAgent(selectedAgentId, ac.signal)
+      .then(setSelectedAgent)
+      .catch((e) => {
+        if (e?.name === 'AbortError') return;
+        // eslint-disable-next-line no-console
+        console.error('fetch agent failed', e);
+      });
+    return () => ac.abort();
+  }, [selectedAgentId, refreshKey]);
+
+  // Poll simulation status to update tick count
+  useEffect(() => {
+    const pollInterval = setInterval(async () => {
+      try {
+        const status = await fetchSimulationStatus();
+        setTickCount(status.tickCount);
+      } catch (error) {
+        // Silently fail to avoid spamming console
+      }
+    }, 1000); // Update every second
+
+    return () => clearInterval(pollInterval);
+  }, []);
+
+  const onSelectAgent = useCallback((a: AgentInViewEntity | null) => {
+    setSelectedAgentId(a ? a.id : null);
   }, []);
 
   return (
@@ -34,10 +73,12 @@ export default function HomePage() {
             showObjects={showObjects}
             selected={selected}
             selectedObject={selectedObject}
-            onHover={setHover}
-            onHoverObject={setHoverObject}
-            onSelect={(info) => { setSelectedObject(null); setSelected(info); }}
-            onSelectObject={setSelectedObject}
+            selectedAgentId={selectedAgentId}
+            selectedAgentPath={selectedAgent ? selectedAgent.path : null}
+            refreshKey={refreshKey}
+            onSelect={(info) => { setSelectedObject(null); setSelectedAgentId(null); setSelected(info); }}
+            onSelectObject={(o) => { if (o) setSelectedAgentId(null); setSelectedObject(o); }}
+            onSelectAgent={onSelectAgent}
           />
         ) : (
           <div className="h-full flex items-center justify-center text-sm text-gray-400">
@@ -57,16 +98,17 @@ export default function HomePage() {
         meta={meta}
         layer={layer}
         onLayer={setLayer}
-        hover={hover}
-        hoverObject={hoverObject}
         selected={selected}
         selectedObject={selectedObject}
+        selectedAgent={selectedAgent}
         backendOk={!!meta && !error}
         showChunkGrid={showChunkGrid}
         onToggleChunkGrid={setShowChunkGrid}
         showObjects={showObjects}
         onToggleObjects={setShowObjects}
+        tickCount={tickCount}
       />
     </div>
   );
 }
+

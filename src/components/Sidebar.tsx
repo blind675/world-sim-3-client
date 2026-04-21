@@ -1,21 +1,26 @@
 'use client';
 
-import type { WorldMeta, WorldObject } from '@/lib/types';
+import type {
+  AgentDetail,
+  AgentInViewEntity,
+  WorldMeta,
+  WorldObject,
+} from '@/lib/types';
 import type { HoverInfo } from './MapCanvas';
 
 interface Props {
   meta: WorldMeta | null;
   layer: 'height' | 'groundType' | 'waterDepth';
   onLayer: (l: 'height' | 'groundType' | 'waterDepth') => void;
-  hover: HoverInfo | null;
-  hoverObject: WorldObject | null;
   selected: HoverInfo | null;
   selectedObject: WorldObject | null;
+  selectedAgent: AgentDetail | null;
   backendOk: boolean;
   showChunkGrid: boolean;
   onToggleChunkGrid: (v: boolean) => void;
   showObjects: boolean;
   onToggleObjects: (v: boolean) => void;
+  tickCount: number;
 }
 
 function row(label: string, value: React.ReactNode) {
@@ -31,15 +36,15 @@ export default function Sidebar({
   meta,
   layer,
   onLayer,
-  hover,
-  hoverObject,
   selected,
   selectedObject,
+  selectedAgent,
   backendOk,
   showChunkGrid,
   onToggleChunkGrid,
   showObjects,
   onToggleObjects,
+  tickCount,
 }: Props) {
   return (
     <aside className="w-72 shrink-0 bg-panel border-l border-white/5 p-4 flex flex-col gap-4 overflow-y-auto">
@@ -48,7 +53,7 @@ export default function Sidebar({
           <span className={`inline-block w-2 h-2 rounded-full ${backendOk ? 'bg-emerald-400' : 'bg-red-400'}`} />
           <h1 className="text-sm font-semibold tracking-wide">Life Simulation v3</h1>
         </div>
-        <p className="text-xs text-gray-400 mt-1">Phase 2 — Static objects</p>
+        <p className="text-xs text-gray-400 mt-1">Milestone 3 — First moving agent</p>
       </div>
 
       <section className="bg-panelSoft rounded p-3">
@@ -124,12 +129,16 @@ export default function Sidebar({
               />
               water
             </div>
-            <div className="flex items-center gap-1.5 col-span-2">
+            <div className="flex items-center gap-2">
               <span className="relative inline-block w-2.5 h-2.5">
                 <span className="absolute inset-0 rounded-full bg-[#8a6436] border border-black/60" />
                 <span className="absolute inset-[30%] rounded-full bg-[#3a2614]" />
               </span>
               nest (rest)
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="inline-block w-2.5 h-2.5 rounded-full bg-[#ffb84d] border border-black/80" />
+              agent
             </div>
           </div>
         ) : null}
@@ -148,50 +157,42 @@ export default function Sidebar({
       </section>
 
       <section className="bg-panelSoft rounded p-3">
-        <h2 className="text-xs uppercase text-gray-400 mb-2">Hover</h2>
-        {hover ? (
-          <>
-            {row('x, y', `${hover.worldX}, ${hover.worldY}`)}
-            {row('height', hover.height != null ? `${hover.height.toFixed(2)} m` : '—')}
-            {row('ground', hover.groundType ?? '—')}
-            {row('water', hover.waterDepth != null ? `${hover.waterDepth.toFixed(2)} m` : '—')}
-            {row('move cost', hover.moveCost != null ? hover.moveCost.toFixed(2) : '∞')}
-          </>
-        ) : (
-          <p className="text-xs text-gray-500">move the mouse over the map</p>
-        )}
+        <h2 className="text-xs uppercase text-gray-400 mb-2">Simulation</h2>
+        {row('ticks', tickCount)}
+        <div className="text-xs text-gray-500 pt-1">
+          Running automatically
+        </div>
       </section>
 
       <section className="bg-panelSoft rounded p-3">
-        <h2 className="text-xs uppercase text-gray-400 mb-2">Hover object</h2>
-        {hoverObject ? (
+        <h2 className="text-xs uppercase text-gray-400 mb-2">Selected</h2>
+        {selectedAgent ? (
           <>
-            {row('type', hoverObject.type)}
-            {row('id', hoverObject.id)}
-            {row('x, y', `${hoverObject.x}, ${hoverObject.y}`)}
+            <div className="text-xs font-medium text-emerald-400 mb-2">Agent</div>
+            {row('id', selectedAgent.id)}
+            {row('x, y', `${selectedAgent.x}, ${selectedAgent.y}`)}
+            {row('facing', `${((selectedAgent.facing * 180) / Math.PI).toFixed(0)}°`)}
+            {row('sex', selectedAgent.sex)}
+            {row('state', selectedAgent.state)}
+            {row('goal', selectedAgent.currentGoal ?? '—')}
+            {row('action', selectedAgent.currentAction ?? '—')}
+            {row('hunger', selectedAgent.hunger.toFixed(2))}
+            {row('thirst', selectedAgent.thirst.toFixed(2))}
+            {row('tired', selectedAgent.tiredness.toFixed(2))}
+            {row('path', `${selectedAgent.pathIndex} / ${selectedAgent.pathLength}`)}
+            {row('vision', selectedAgent.traits.visionRange)}
+            {row('speed', selectedAgent.traits.moveSpeed)}
           </>
-        ) : (
-          <p className="text-xs text-gray-500">hover over a tree or rock</p>
-        )}
-      </section>
-
-      <section className="bg-panelSoft rounded p-3">
-        <h2 className="text-xs uppercase text-gray-400 mb-2">Selected object</h2>
-        {selectedObject ? (
+        ) : selectedObject ? (
           <>
+            <div className="text-xs font-medium text-blue-400 mb-2">Object</div>
             {row('type', selectedObject.type)}
             {row('id', selectedObject.id)}
             {row('x, y', `${selectedObject.x}, ${selectedObject.y}`)}
           </>
-        ) : (
-          <p className="text-xs text-gray-500">click an object to pin it</p>
-        )}
-      </section>
-
-      <section className="bg-panelSoft rounded p-3">
-        <h2 className="text-xs uppercase text-gray-400 mb-2">Selected tile</h2>
-        {selected ? (
+        ) : selected ? (
           <>
+            <div className="text-xs font-medium text-gray-400 mb-2">Tile</div>
             {row('x, y', `${selected.worldX}, ${selected.worldY}`)}
             {row('height', selected.height != null ? `${selected.height.toFixed(2)} m` : '—')}
             {row('ground', selected.groundType ?? '—')}
@@ -199,7 +200,7 @@ export default function Sidebar({
             {row('move cost', selected.moveCost != null ? selected.moveCost.toFixed(2) : '∞')}
           </>
         ) : (
-          <p className="text-xs text-gray-500">click a tile to pin its data</p>
+          <p className="text-xs text-gray-500">click an agent, object, or tile to select it</p>
         )}
       </section>
 
@@ -207,7 +208,8 @@ export default function Sidebar({
         <h2 className="text-xs uppercase text-gray-400 mb-2">Controls</h2>
         <p><b>Drag</b> — pan</p>
         <p><b>Wheel</b> — zoom</p>
-        <p><b>Click</b> — pin tile</p>
+        <p><b>Click</b> — select agent / object / pin tile</p>
+        <p><b>Right-click</b> or <b>Shift+click</b> — command selected agent to path here</p>
         <p className="mt-2 text-gray-500">World wraps seamlessly on both axes.</p>
       </section>
     </aside>

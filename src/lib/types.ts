@@ -74,6 +74,15 @@ export interface AgentInViewEntity {
   y: number;
   facing: number;
   state: string;
+  currentGoal?: { type: string; targetX: number; targetY: number };
+  currentAction?: string;
+  // Movement data for interpolation
+  movementStartPos?: { x: number; y: number };
+  targetPos?: { x: number; y: number };
+  movementStartTick?: number;
+  currentTick: number;
+  moveSpeed: number;
+  isMoving: boolean;
 }
 
 export type InViewEntity = WorldObject | AgentInViewEntity;
@@ -103,7 +112,7 @@ export interface AgentSummary {
   sex: 'female' | 'male';
   age: number;
   state: string;
-  currentGoal: string | null;
+  currentGoal: { type: string; targetX: number; targetY: number } | null;
   currentAction: string | null;
   targetId: string | null;
   hunger: number;

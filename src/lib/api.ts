@@ -132,7 +132,7 @@ export async function fetchAllAgents(signal?: AbortSignal): Promise<AgentInViewE
   return data.agents || [];
 }
 
-export async function fetchSimulationStatus(signal?: AbortSignal): Promise<{ isRunning: boolean; tickCount: number; tickMs: number; agentCount: number }> {
+export async function fetchTickCount(signal?: AbortSignal): Promise<{ tickCount: number; tickMs: number; agentCount: number }> {
   const res = await fetch(`${BASE}/api/simulation/status`, {
     method: 'GET',
     signal,
@@ -142,5 +142,5 @@ export async function fetchSimulationStatus(signal?: AbortSignal): Promise<{ isR
     const text = await res.text().catch(() => '');
     throw new Error(`GET /api/simulation/status failed: ${res.status} ${text}`);
   }
-  return res.json() as Promise<{ isRunning: boolean; tickCount: number; tickMs: number; agentCount: number }>;
+  return res.json() as Promise<{ tickCount: number; tickMs: number; agentCount: number }>;
 }

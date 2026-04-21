@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import MapCanvas, { HoverInfo } from '@/components/MapCanvas';
 import Sidebar from '@/components/Sidebar';
-import { fetchAgent, fetchMeta, postAgentPath, postSimStep, fetchSimulationStatus } from '@/lib/api';
+import { fetchAgent, fetchMeta, postAgentPath, postSimStep, fetchTickCount } from '@/lib/api';
 import type {
   AgentDetail,
   AgentInViewEntity,
@@ -23,6 +23,7 @@ export default function HomePage() {
   const [showObjects, setShowObjects] = useState(true);
   const [tickCount, setTickCount] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [tickMs, setTickMs] = useState(200);
 
   useEffect(() => {
     fetchMeta()
@@ -42,21 +43,30 @@ export default function HomePage() {
         console.error('fetch agent failed', e);
       });
     return () => ac.abort();
-  }, [selectedAgentId, refreshKey]);
+  }, [selectedAgentId, refreshKey, tickCount]);
 
-  // Poll simulation status to update tick count
+  // Fetch tick count at SIM_TICK_MS interval
   useEffect(() => {
-    const pollInterval = setInterval(async () => {
+    const fetchTickInfo = async () => {
       try {
-        const status = await fetchSimulationStatus();
-        setTickCount(status.tickCount);
+        const tickInfo = await fetchTickCount();
+        setTickCount(tickInfo.tickCount);
+        setTickMs(tickInfo.tickMs);
       } catch (error) {
         // Silently fail to avoid spamming console
       }
-    }, 1000); // Update every second
+    };
 
-    return () => clearInterval(pollInterval);
-  }, []);
+    // Initial fetch
+    fetchTickInfo();
+
+    // Set up interval to fetch at SIM_TICK_MS rate
+    const intervalId = setInterval(fetchTickInfo, tickMs);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [tickMs]);
 
   const onSelectAgent = useCallback((a: AgentInViewEntity | null) => {
     setSelectedAgentId(a ? a.id : null);

@@ -174,7 +174,9 @@ export default function Sidebar({
             {row('facing', `${((selectedAgent.facing * 180) / Math.PI).toFixed(0)}°`)}
             {row('sex', selectedAgent.sex)}
             {row('state', selectedAgent.state)}
-            {row('goal', selectedAgent.currentGoal ?? '—')}
+            {row('goal', selectedAgent.currentGoal ?
+              `${selectedAgent.currentGoal.type} (${selectedAgent.currentGoal.targetX}, ${selectedAgent.currentGoal.targetY})` :
+              '---')}
             {row('action', selectedAgent.currentAction ?? '—')}
             {row('hunger', selectedAgent.hunger.toFixed(2))}
             {row('thirst', selectedAgent.thirst.toFixed(2))}

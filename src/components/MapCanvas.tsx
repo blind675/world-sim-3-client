@@ -49,6 +49,52 @@ interface ChunkData {
   moveCost: Float32Array; // -1 means impassable
 }
 
+// Map to track movement start times for smooth interpolation
+const movementStartTimes = new Map<string, number>();
+
+// Interpolation function for smooth agent movement
+function interpolateAgentPosition(agent: AgentInViewEntity, currentAnimTime: number, tickMs: number): { x: number; y: number } {
+  if (!agent.isMoving || !agent.movementStartPos || !agent.targetPos) {
+    // Clear movement start time when agent stops moving
+    movementStartTimes.delete(agent.id);
+    return { x: agent.x, y: agent.y };
+  }
+
+  // Check if agent has already reached the target position
+  const hasReachedTarget = Math.abs(agent.x - agent.targetPos.x) < 0.1 &&
+    Math.abs(agent.y - agent.targetPos.y) < 0.1;
+
+  if (hasReachedTarget) {
+    // Agent is at target but still marked as moving - clear tracking
+    movementStartTimes.delete(agent.id);
+    return { x: agent.x, y: agent.y };
+  }
+
+  // Store the animation time when we first see this agent's movement
+  if (!movementStartTimes.has(agent.id)) {
+    movementStartTimes.set(agent.id, currentAnimTime);
+  }
+
+  // Use simulation tick interval for animation timing
+  // Animation should span the entire tick interval for smooth movement
+  const movementDuration = tickMs / agent.moveSpeed; // ms per tick
+  const elapsedSinceStart = currentAnimTime - movementStartTimes.get(agent.id)!;
+  const progress = Math.min(elapsedSinceStart / movementDuration, 1);
+
+  // Check if animation has completed
+  if (progress >= 1) {
+    // Animation complete - clear tracking and return target position
+    movementStartTimes.delete(agent.id);
+    return { x: agent.targetPos.x, y: agent.targetPos.y };
+  }
+
+  // Return interpolated position during movement
+  return {
+    x: agent.movementStartPos.x + (agent.targetPos.x - agent.movementStartPos.x) * progress,
+    y: agent.movementStartPos.y + (agent.targetPos.y - agent.movementStartPos.y) * progress
+  };
+}
+
 interface ChunkEntry {
   status: 'loading' | 'ready' | 'error';
   data?: ChunkData;
@@ -290,9 +336,12 @@ export default function MapCanvas({
     return () => ac.abort();
   }, [visibleChunks, cs, showObjects, refreshKey]);
 
+  // Animation frame state to trigger re-renders for smooth movement
+  const [animationFrame, setAnimationFrame] = useState(0);
+
   // ---- Real-time agent animation polling ----
   useEffect(() => {
-    // Poll for agent positions every 100ms for smooth animation
+    // Use exact tick interval for polling - no need for more frequent updates
     const pollInterval = setInterval(async () => {
       try {
         const allAgents = await fetchAllAgents();
@@ -301,10 +350,10 @@ export default function MapCanvas({
         // Silently fail to avoid spamming console during polling
         // Errors will be caught by the viewport fetch above
       }
-    }, 100);
+    }, meta.simulation.tickMs); // Poll exactly when ticks occur
 
     return () => clearInterval(pollInterval);
-  }, []);
+  }, [meta.simulation.tickMs]);
 
   // ---- Paint a single chunk's data into a 128x128 cached canvas for the active layer. ----
   const paintChunkCanvas = useCallback(
@@ -654,8 +703,10 @@ export default function MapCanvas({
       const W = meta.width;
       const H = meta.height;
       const selAgent = agentsInView.find((a) => a.id === selectedAgentId);
-      const startX = selAgent ? selAgent.x + 0.5 : null;
-      const startY = selAgent ? selAgent.y + 0.5 : null;
+      // Use interpolated position for smooth path animation
+      const interpolatedPos = selAgent ? interpolateAgentPosition(selAgent, animationFrame, meta.simulation.tickMs) : null;
+      const startX = interpolatedPos ? interpolatedPos.x + 0.5 : null;
+      const startY = interpolatedPos ? interpolatedPos.y + 0.5 : null;
 
       // Build points shifted to the instance nearest the camera centre to
       // avoid seam-crossing lines. We also break the polyline whenever the
@@ -725,8 +776,10 @@ export default function MapCanvas({
       const H = meta.height;
       const agentR = Math.max(3, Math.min(8, ppc * 1.0));
       for (const a of agentsInView) {
-        let wx = a.x + 0.5;
-        let wy = a.y + 0.5;
+        // Use interpolated position for smooth animation
+        const interpolatedPos = interpolateAgentPosition(a, animationFrame, meta.simulation.tickMs);
+        let wx = interpolatedPos.x + 0.5;
+        let wy = interpolatedPos.y + 0.5;
         const dxw = wx - camera.cx;
         if (dxw > W / 2) wx -= W; else if (dxw < -W / 2) wx += W;
         const dyw = wy - camera.cy;
@@ -821,15 +874,38 @@ export default function MapCanvas({
         ctx.lineWidth = Math.max(1.5, Math.min(2.5, ppc * 0.18));
         ctx.strokeStyle = '#ffffff';
         ctx.strokeRect(sx, sy, sSize, sSize);
-        ctx.restore();
       }
+      ctx.restore();
     }
   }, [
-    visibleChunks, camera.ppc, camera.cx, camera.cy, size.w, size.h, layer, showChunkGrid,
-    cs, chunksW, chunksH, paintChunkCanvas, cacheTick, selected, meta.width, meta.height,
-    showObjects, objectsInView, selectedObject,
-    agentsInView, selectedAgentId, selectedAgentPath,
+    meta, size, cs, camera, layer, visibleChunks, chunksW, chunksH,
+    showChunkGrid, showObjects, objectsInView, selectedObject,
+    agentsInView, selectedAgentId, selectedAgentPath, animationFrame
   ]);
+
+  // ---- Continuous animation loop for smooth agent movement ----
+  useEffect(() => {
+    let animationId: number;
+    let lastTime = 0;
+
+    const animate = (currentTime: number) => {
+      // Only redraw if enough time has passed (cap at 60fps)
+      if (currentTime - lastTime >= 16) { // ~60fps
+        setAnimationFrame(currentTime);
+        lastTime = currentTime;
+      }
+
+      animationId = requestAnimationFrame(animate);
+    };
+
+    animationId = requestAnimationFrame(animate);
+
+    return () => {
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+      }
+    };
+  }, []);
 
   // ---- Screen -> world, wrapped ----
   const screenToWorld = useCallback(
@@ -916,8 +992,10 @@ export default function MapCanvas({
       let best: AgentInViewEntity | null = null;
       let bestD2 = pxThreshold * pxThreshold;
       for (const a of agentsInView) {
-        let wx = a.x + 0.5;
-        let wy = a.y + 0.5;
+        // Use interpolated position for accurate click detection
+        const interpolatedPos = interpolateAgentPosition(a, animationFrame, meta.simulation.tickMs);
+        let wx = interpolatedPos.x + 0.5;
+        let wy = interpolatedPos.y + 0.5;
         const dxw = wx - camera.cx;
         if (dxw > W / 2) wx -= W; else if (dxw < -W / 2) wx += W;
         const dyw = wy - camera.cy;
@@ -969,7 +1047,11 @@ export default function MapCanvas({
 
     let content = '';
     if (hovAgent) {
-      content = `Agent ${hovAgent.id}\nPosition: ${hovAgent.x}, ${hovAgent.y}\nState: ${hovAgent.state}`;
+      const interpolatedPos = interpolateAgentPosition(hovAgent, animationFrame, meta.simulation.tickMs);
+      const goalText = hovAgent.currentGoal ?
+        `${hovAgent.currentGoal.type} (${hovAgent.currentGoal.targetX}, ${hovAgent.currentGoal.targetY})` :
+        'none';
+      content = `Agent ${hovAgent.id}\nPosition: ${Math.round(interpolatedPos.x)}, ${Math.round(interpolatedPos.y)}\nState: ${hovAgent.state}\nGoal: ${goalText}`;
     } else if (hovObject) {
       content = `${hovObject.type} ${hovObject.id}\nPosition: ${hovObject.x}, ${hovObject.y}`;
     } else {

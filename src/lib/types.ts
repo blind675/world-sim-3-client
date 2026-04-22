@@ -13,6 +13,14 @@ export interface WorldMeta {
     seaLevel: number;
   };
   simulation: { tickMs: number };
+  perception?: {
+    coneDeg: number;
+    coneHalfAngleRad: number;
+    nearRadius: number;
+    clusterRadius?: number;
+    clusterMinCount?: number;
+    clusterDecayMultiplier?: number;
+  };
 }
 
 export type LayerName = 'height' | 'groundType' | 'waterDepth' | 'moveCost' | 'blocksVision';
@@ -74,7 +82,7 @@ export interface AgentInViewEntity {
   y: number;
   facing: number;
   state: string;
-  currentGoal?: { type: string; targetX: number; targetY: number };
+  currentGoal?: AgentGoal;
   currentAction?: string;
   // Movement data for interpolation
   movementStartPos?: { x: number; y: number };
@@ -104,6 +112,14 @@ export interface AgentTraits {
   moveSpeed: number;
 }
 
+export interface AgentGoal {
+  type: 'wander' | 'seek_food' | 'seek_water' | string;
+  targetX: number;
+  targetY: number;
+  memoryId?: string;
+  memoryConfidence?: number;
+}
+
 export interface AgentSummary {
   id: string;
   x: number;
@@ -112,7 +128,7 @@ export interface AgentSummary {
   sex: 'female' | 'male';
   age: number;
   state: string;
-  currentGoal: { type: string; targetX: number; targetY: number } | null;
+  currentGoal: AgentGoal | null;
   currentAction: string | null;
   targetId: string | null;
   hunger: number;
@@ -124,9 +140,34 @@ export interface AgentSummary {
   pathRemaining: number;
 }
 
+export type MemoryEntryType = WorldObjectType | 'agent';
+
+interface MemoryEntryBase {
+  id: string;
+  type: MemoryEntryType;
+  x: number;
+  y: number;
+  firstSeenTick: number;
+  lastSeenTick: number;
+  confidence: number;
+}
+
+export interface MemoryEntryEntity extends MemoryEntryBase {
+  kind: 'entity';
+}
+
+export interface MemoryEntryCluster extends MemoryEntryBase {
+  kind: 'cluster';
+  radius: number;
+  count: number;
+  memberIds: string[];
+}
+
+export type MemoryEntry = MemoryEntryEntity | MemoryEntryCluster;
+
 export interface AgentDetail extends AgentSummary {
   inventory: unknown[];
-  memory: unknown[];
+  memory: MemoryEntry[];
   path: { x: number; y: number }[];
 }
 

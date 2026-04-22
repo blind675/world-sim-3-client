@@ -21,6 +21,8 @@ export default function HomePage() {
   const [selectedAgent, setSelectedAgent] = useState<AgentDetail | null>(null);
   const [showChunkGrid, setShowChunkGrid] = useState(true);
   const [showObjects, setShowObjects] = useState(true);
+  const [showVision, setShowVision] = useState(true);
+  const [showClusterExtents, setShowClusterExtents] = useState(true);
   const [tickCount, setTickCount] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
   const [tickMs, setTickMs] = useState(200);
@@ -81,10 +83,13 @@ export default function HomePage() {
             layer={layer}
             showChunkGrid={showChunkGrid}
             showObjects={showObjects}
+            showVision={showVision}
+            showClusterExtents={showClusterExtents}
             selected={selected}
             selectedObject={selectedObject}
             selectedAgentId={selectedAgentId}
             selectedAgentPath={selectedAgent ? selectedAgent.path : null}
+            selectedAgent={selectedAgent}
             refreshKey={refreshKey}
             onSelect={(info) => { setSelectedObject(null); setSelectedAgentId(null); setSelected(info); }}
             onSelectObject={(o) => { if (o) setSelectedAgentId(null); setSelectedObject(o); }}
@@ -116,6 +121,10 @@ export default function HomePage() {
         onToggleChunkGrid={setShowChunkGrid}
         showObjects={showObjects}
         onToggleObjects={setShowObjects}
+        showVision={showVision}
+        onToggleVision={setShowVision}
+        showClusterExtents={showClusterExtents}
+        onToggleClusterExtents={setShowClusterExtents}
         tickCount={tickCount}
       />
     </div>

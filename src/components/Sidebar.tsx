@@ -3,6 +3,7 @@
 import type {
   AgentDetail,
   AgentInViewEntity,
+  MemoryEntry,
   WorldMeta,
   WorldObject,
 } from '@/lib/types';
@@ -20,6 +21,10 @@ interface Props {
   onToggleChunkGrid: (v: boolean) => void;
   showObjects: boolean;
   onToggleObjects: (v: boolean) => void;
+  showVision: boolean;
+  onToggleVision: (v: boolean) => void;
+  showClusterExtents: boolean;
+  onToggleClusterExtents: (v: boolean) => void;
   tickCount: number;
 }
 
@@ -28,6 +33,136 @@ function row(label: string, value: React.ReactNode) {
     <div className="flex justify-between gap-4 text-xs py-0.5">
       <span className="text-gray-400">{label}</span>
       <span className="text-gray-100 tabular-nums">{value}</span>
+    </div>
+  );
+}
+
+// Color-per-type dot used in the memory list to match the map legend glyphs.
+const MEMORY_TYPE_COLOR: Record<string, string> = {
+  tree: '#2f7a2d',
+  rock: '#8d8d95',
+  food: '#c8372d',
+  water_source: '#3d8ed0',
+  rest_spot: '#8a6436',
+  agent: '#ffb84d',
+};
+
+function MemoryPanel({ memory, currentTick }: { memory: MemoryEntry[]; currentTick: number }) {
+  const sorted = [...memory].sort((a, b) => b.confidence - a.confidence);
+  const top = sorted.slice(0, 5);
+
+  // Count individuals and cluster groups separately per type so chips read
+  // "tree ×12 · group ×1 (Σ18)" — you can see at a glance how much of the
+  // memory is compressed into clusters.
+  type Bucket = { entities: number; clusters: number; members: number };
+  const byType = new Map<string, Bucket>();
+  let clusterCount = 0;
+  let clusterMemberCount = 0;
+  for (const m of memory) {
+    const bucket = byType.get(m.type) ?? { entities: 0, clusters: 0, members: 0 };
+    if (m.kind === 'cluster') {
+      bucket.clusters += 1;
+      bucket.members += m.count;
+      clusterCount += 1;
+      clusterMemberCount += m.count;
+    } else {
+      bucket.entities += 1;
+    }
+    byType.set(m.type, bucket);
+  }
+
+  return (
+    <div className="mt-3 pt-2 border-t border-white/5">
+      <div className="flex justify-between text-xs text-gray-400 mb-1">
+        <span className="uppercase">Memory</span>
+        <span className="tabular-nums">
+          {memory.length} {memory.length === 1 ? 'entry' : 'entries'}
+          {clusterCount > 0 ? (
+            <span className="text-gray-500">
+              {' '}· {clusterCount} group{clusterCount === 1 ? '' : 's'} (Σ{clusterMemberCount})
+            </span>
+          ) : null}
+        </span>
+      </div>
+      {memory.length === 0 ? (
+        <p className="text-[11px] text-gray-500">Nothing remembered yet.</p>
+      ) : (
+        <>
+          <div className="flex flex-wrap gap-1 mb-1.5">
+            {Array.from(byType.entries()).map(([t, b]) => (
+              <span
+                key={t}
+                className="text-[10px] px-1.5 py-0.5 rounded bg-black/30 text-gray-300 tabular-nums"
+              >
+                <span
+                  className="inline-block w-1.5 h-1.5 rounded-full mr-1 align-middle"
+                  style={{ backgroundColor: MEMORY_TYPE_COLOR[t] ?? '#aaa' }}
+                />
+                {t}
+                {b.entities > 0 ? ` ×${b.entities}` : ''}
+                {b.clusters > 0 ? (
+                  <span className="text-yellow-400/80">
+                    {b.entities > 0 ? ' · ' : ' '}
+                    ◯{b.clusters} (Σ{b.members})
+                  </span>
+                ) : null}
+              </span>
+            ))}
+          </div>
+          <ul className="space-y-1">
+            {top.map((m) => {
+              const ticksAgo = Math.max(0, currentTick - m.lastSeenTick);
+              const confPct = Math.round(m.confidence * 100);
+              const color = MEMORY_TYPE_COLOR[m.type] ?? '#aaa';
+              return (
+                <li key={m.id} className="text-[11px]">
+                  <div className="flex justify-between tabular-nums">
+                    <span className="truncate">
+                      {m.kind === 'cluster' ? (
+                        <span
+                          className="inline-block w-2 h-2 rounded-full mr-1 align-middle border"
+                          style={{
+                            backgroundColor: `${color}33`,
+                            borderColor: color,
+                          }}
+                        />
+                      ) : (
+                        <span
+                          className="inline-block w-1.5 h-1.5 rounded-full mr-1 align-middle"
+                          style={{ backgroundColor: color }}
+                        />
+                      )}
+                      {m.kind === 'cluster' ? (
+                        <>
+                          {m.type} group
+                          <span className="text-yellow-400/80"> ×{m.count}</span>
+                          <span className="text-gray-500">
+                            {' '}({Math.round(m.x)},{Math.round(m.y)}) ≈r{m.radius.toFixed(1)}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          {m.type}
+                          <span className="text-gray-500"> ({m.x},{m.y})</span>
+                        </>
+                      )}
+                    </span>
+                    <span className="text-gray-500 ml-2">
+                      {ticksAgo === 0 ? 'now' : `-${ticksAgo}t`}
+                    </span>
+                  </div>
+                  <div className="h-1 bg-black/40 rounded overflow-hidden mt-0.5">
+                    <div
+                      className={m.kind === 'cluster' ? 'h-full bg-emerald-400/80' : 'h-full bg-yellow-400/80'}
+                      style={{ width: `${confPct}%` }}
+                    />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      )}
     </div>
   );
 }
@@ -44,6 +179,10 @@ export default function Sidebar({
   onToggleChunkGrid,
   showObjects,
   onToggleObjects,
+  showVision,
+  onToggleVision,
+  showClusterExtents,
+  onToggleClusterExtents,
   tickCount,
 }: Props) {
   return (
@@ -53,7 +192,7 @@ export default function Sidebar({
           <span className={`inline-block w-2 h-2 rounded-full ${backendOk ? 'bg-emerald-400' : 'bg-red-400'}`} />
           <h1 className="text-sm font-semibold tracking-wide">Life Simulation v3</h1>
         </div>
-        <p className="text-xs text-gray-400 mt-1">Milestone 3 — First moving agent</p>
+        <p className="text-xs text-gray-400 mt-1">Milestone 4 — Perception & memory</p>
       </div>
 
       <section className="bg-panelSoft rounded p-3">
@@ -145,6 +284,36 @@ export default function Sidebar({
         <label className="flex items-center gap-2 text-xs cursor-pointer">
           <input
             type="checkbox"
+            checked={showVision}
+            onChange={(e) => onToggleVision(e.target.checked)}
+            className="accent-yellow-400"
+          />
+          <span>Vision</span>
+          <span className="ml-auto text-gray-500">
+            {meta?.perception
+              ? `${meta.perception.coneDeg}° · near ${meta.perception.nearRadius}`
+              : 'selected agent'}
+          </span>
+        </label>
+        {showVision ? (
+          <label className="flex items-center gap-2 text-xs cursor-pointer pl-6">
+            <input
+              type="checkbox"
+              checked={showClusterExtents}
+              onChange={(e) => onToggleClusterExtents(e.target.checked)}
+              className="accent-emerald-400"
+            />
+            <span>Cluster extents</span>
+            <span className="ml-auto text-gray-500">
+              {meta?.perception?.clusterRadius !== undefined
+                ? `≥${meta.perception.clusterMinCount ?? 3} · r${meta.perception.clusterRadius}`
+                : 'groups'}
+            </span>
+          </label>
+        ) : null}
+        <label className="flex items-center gap-2 text-xs cursor-pointer">
+          <input
+            type="checkbox"
             checked={showChunkGrid}
             onChange={(e) => onToggleChunkGrid(e.target.checked)}
             className="accent-red-500"
@@ -174,9 +343,17 @@ export default function Sidebar({
             {row('facing', `${((selectedAgent.facing * 180) / Math.PI).toFixed(0)}°`)}
             {row('sex', selectedAgent.sex)}
             {row('state', selectedAgent.state)}
-            {row('goal', selectedAgent.currentGoal ?
-              `${selectedAgent.currentGoal.type} (${selectedAgent.currentGoal.targetX}, ${selectedAgent.currentGoal.targetY})` :
-              '---')}
+            {row('goal', selectedAgent.currentGoal ? (
+              <span>
+                {selectedAgent.currentGoal.type}
+                <span className="text-gray-500"> ({selectedAgent.currentGoal.targetX}, {selectedAgent.currentGoal.targetY})</span>
+                {selectedAgent.currentGoal.memoryConfidence !== undefined ? (
+                  <span className="text-yellow-400/80 ml-1">
+                    · mem {Math.round(selectedAgent.currentGoal.memoryConfidence * 100)}%
+                  </span>
+                ) : null}
+              </span>
+            ) : '---')}
             {row('action', selectedAgent.currentAction ?? '—')}
             {row('hunger', selectedAgent.hunger.toFixed(2))}
             {row('thirst', selectedAgent.thirst.toFixed(2))}
@@ -184,6 +361,8 @@ export default function Sidebar({
             {row('path', `${selectedAgent.pathIndex} / ${selectedAgent.pathLength}`)}
             {row('vision', selectedAgent.traits.visionRange)}
             {row('speed', selectedAgent.traits.moveSpeed)}
+
+            <MemoryPanel memory={selectedAgent.memory} currentTick={tickCount} />
           </>
         ) : selectedObject ? (
           <>

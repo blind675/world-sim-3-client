@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import MapCanvas, { HoverInfo } from '@/components/MapCanvas';
 import Sidebar from '@/components/Sidebar';
+import TutorialModal from '@/components/TutorialModal';
 import { fetchAgent, fetchMeta, postAgentPath, postSimStep, fetchTickCount, fetchDeaths } from '@/lib/api';
 import type {
   AgentDetail,
@@ -28,11 +29,20 @@ export default function HomePage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [tickMs, setTickMs] = useState(200);
   const [deaths, setDeaths] = useState<DeathRecord[]>([]);
+  const [showTutorial, setShowTutorial] = useState(false);
 
   useEffect(() => {
     fetchMeta()
       .then(setMeta)
       .catch((e) => setError(String(e)));
+  }, []);
+
+  // Check if this is the first visit and show tutorial
+  useEffect(() => {
+    const hasCompletedTutorial = localStorage.getItem('flatworld-tutorial-completed');
+    if (!hasCompletedTutorial) {
+      setShowTutorial(true);
+    }
   }, []);
 
   // Refetch selected agent detail whenever selection changes or sim advances.
@@ -82,6 +92,7 @@ export default function HomePage() {
 
   return (
     <div className="h-screen w-screen flex">
+      <TutorialModal isOpen={showTutorial} onClose={() => setShowTutorial(false)} />
       <main className="flex-1 relative bg-black">
         {meta ? (
           <MapCanvas
@@ -133,6 +144,7 @@ export default function HomePage() {
         showClusterExtents={showClusterExtents}
         onToggleClusterExtents={setShowClusterExtents}
         tickCount={tickCount}
+        onShowTutorial={() => setShowTutorial(true)}
       />
     </div>
   );

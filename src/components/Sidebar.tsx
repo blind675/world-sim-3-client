@@ -28,6 +28,7 @@ interface Props {
   showClusterExtents: boolean;
   onToggleClusterExtents: (v: boolean) => void;
   tickCount: number;
+  onShowTutorial: () => void;
 }
 
 function row(label: string, value: React.ReactNode) {
@@ -270,6 +271,7 @@ export default function Sidebar({
   showClusterExtents,
   onToggleClusterExtents,
   tickCount,
+  onShowTutorial,
 }: Props) {
   return (
     <aside className="w-72 shrink-0 bg-panel border-l border-white/5 p-4 flex flex-col gap-4 overflow-y-auto">
@@ -476,6 +478,15 @@ export default function Sidebar({
         <p><b>Click</b> — select agent / object / pin tile</p>
         <p><b>Right-click</b> or <b>Shift+click</b> — command selected agent to path here</p>
         <p className="mt-2 text-gray-500">World wraps seamlessly on both axes.</p>
+
+        <div className="mt-3 pt-3 border-t border-white/5">
+          <button
+            onClick={onShowTutorial}
+            className="w-full px-3 py-2 bg-blue-600/20 border border-blue-500/30 text-blue-400 rounded hover:bg-blue-600/30 hover:border-blue-500/50 transition-colors text-xs font-medium"
+          >
+            📖 Show Tutorial
+          </button>
+        </div>
       </section>
     </aside>
   );

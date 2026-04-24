@@ -3,6 +3,7 @@ import type {
   AgentInViewEntity,
   CellResponse,
   ChunksResponse,
+  DeathRecord,
   EntitiesInViewResponse,
   EntityType,
   LayerName,
@@ -143,4 +144,8 @@ export async function fetchTickCount(signal?: AbortSignal): Promise<{ tickCount:
     throw new Error(`GET /api/simulation/status failed: ${res.status} ${text}`);
   }
   return res.json() as Promise<{ tickCount: number; tickMs: number; agentCount: number }>;
+}
+
+export function fetchDeaths(signal?: AbortSignal) {
+  return getJson<DeathRecord[]>('/api/deaths', signal);
 }

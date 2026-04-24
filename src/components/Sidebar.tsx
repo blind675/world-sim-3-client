@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import type {
   AgentDetail,
   AgentInViewEntity,
@@ -8,6 +9,7 @@ import type {
   WorldObject,
 } from '@/lib/types';
 import type { HoverInfo } from './MapCanvas';
+import { MemoryModal } from './MemoryModal';
 
 interface Props {
   meta: WorldMeta | null;
@@ -47,7 +49,73 @@ const MEMORY_TYPE_COLOR: Record<string, string> = {
   agent: '#ffb84d',
 };
 
-function MemoryPanel({ memory, currentTick }: { memory: MemoryEntry[]; currentTick: number }) {
+// Gradient from green (low) to yellow to red (high) based on need value.
+// Mirrors the intent of "0 = safe, 1 = critical" at a glance.
+function needColor(v: number): string {
+  const clamped = Math.max(0, Math.min(1, v));
+  if (clamped < 0.5) {
+    // green -> yellow
+    const t = clamped / 0.5;
+    const r = Math.round(60 + t * (220 - 60));
+    const g = Math.round(180 - t * (180 - 180));
+    const b = Math.round(80 - t * 80);
+    return `rgb(${r},${g},${b})`;
+  }
+  // yellow -> red
+  const t = (clamped - 0.5) / 0.5;
+  const r = Math.round(220 + t * (235 - 220));
+  const g = Math.round(180 - t * (180 - 60));
+  const b = Math.round(0 + t * 40);
+  return `rgb(${r},${g},${b})`;
+}
+
+function NeedBar({ label, value, accent }: { label: string; value: number; accent: string }) {
+  const pct = Math.round(Math.max(0, Math.min(1, value)) * 100);
+  const color = needColor(value);
+  return (
+    <div className="text-[11px] py-0.5">
+      <div className="flex justify-between tabular-nums">
+        <span className="text-gray-400">
+          <span
+            className="inline-block w-1.5 h-1.5 rounded-full mr-1 align-middle"
+            style={{ backgroundColor: accent }}
+          />
+          {label}
+        </span>
+        <span className="text-gray-100">{pct}%</span>
+      </div>
+      <div className="h-1.5 bg-black/40 rounded overflow-hidden mt-0.5">
+        <div
+          className="h-full transition-all"
+          style={{ width: `${pct}%`, backgroundColor: color }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function NeedsPanel({ agent }: { agent: AgentDetail }) {
+  const inAction = ['eating', 'drinking', 'resting'].includes(agent.state);
+  return (
+    <div className="mt-2 pt-2 border-t border-white/5">
+      <div className="flex justify-between text-xs text-gray-400 mb-1">
+        <span className="uppercase">Needs</span>
+        {inAction ? (
+          <span className="text-emerald-400 tabular-nums">
+            {agent.state} · {agent.actionTicksRemaining}t left
+          </span>
+        ) : null}
+      </div>
+      <NeedBar label="thirst" value={agent.thirst} accent="#3d8ed0" />
+      <NeedBar label="hunger" value={agent.hunger} accent="#c8372d" />
+      <NeedBar label="tiredness" value={agent.tiredness} accent="#8a6fb8" />
+    </div>
+  );
+}
+
+function MemoryPanel({ memory, currentTick, agentId }: { memory: MemoryEntry[]; currentTick: number; agentId: string }) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   const sorted = [...memory].sort((a, b) => b.confidence - a.confidence);
   const top = sorted.slice(0, 5);
 
@@ -75,14 +143,25 @@ function MemoryPanel({ memory, currentTick }: { memory: MemoryEntry[]; currentTi
     <div className="mt-3 pt-2 border-t border-white/5">
       <div className="flex justify-between text-xs text-gray-400 mb-1">
         <span className="uppercase">Memory</span>
-        <span className="tabular-nums">
-          {memory.length} {memory.length === 1 ? 'entry' : 'entries'}
-          {clusterCount > 0 ? (
-            <span className="text-gray-500">
-              {' '}· {clusterCount} group{clusterCount === 1 ? '' : 's'} (Σ{clusterMemberCount})
-            </span>
-          ) : null}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="tabular-nums">
+            {memory.length} {memory.length === 1 ? 'entry' : 'entries'}
+            {clusterCount > 0 ? (
+              <span className="text-gray-500">
+                {' '}· {clusterCount} group{clusterCount === 1 ? '' : 's'} (Σ{clusterMemberCount})
+              </span>
+            ) : null}
+          </span>
+          {memory.length > 0 && (
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="px-2 py-0.5 text-xs bg-blue-600 hover:bg-blue-700 rounded transition-colors"
+              title="Inspect all memory items"
+            >
+              View All
+            </button>
+          )}
+        </div>
       </div>
       {memory.length === 0 ? (
         <p className="text-[11px] text-gray-500">Nothing remembered yet.</p>
@@ -163,6 +242,13 @@ function MemoryPanel({ memory, currentTick }: { memory: MemoryEntry[]; currentTi
           </ul>
         </>
       )}
+      <MemoryModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        memory={memory}
+        currentTick={currentTick}
+        agentId={agentId}
+      />
     </div>
   );
 }
@@ -192,7 +278,7 @@ export default function Sidebar({
           <span className={`inline-block w-2 h-2 rounded-full ${backendOk ? 'bg-emerald-400' : 'bg-red-400'}`} />
           <h1 className="text-sm font-semibold tracking-wide">Life Simulation v3</h1>
         </div>
-        <p className="text-xs text-gray-400 mt-1">Milestone 4 — Perception & memory</p>
+        <p className="text-xs text-gray-400 mt-1">Milestone 5 — Survival loop</p>
       </div>
 
       <section className="bg-panelSoft rounded p-3">
@@ -355,14 +441,12 @@ export default function Sidebar({
               </span>
             ) : '---')}
             {row('action', selectedAgent.currentAction ?? '—')}
-            {row('hunger', selectedAgent.hunger.toFixed(2))}
-            {row('thirst', selectedAgent.thirst.toFixed(2))}
-            {row('tired', selectedAgent.tiredness.toFixed(2))}
             {row('path', `${selectedAgent.pathIndex} / ${selectedAgent.pathLength}`)}
             {row('vision', selectedAgent.traits.visionRange)}
             {row('speed', selectedAgent.traits.moveSpeed)}
 
-            <MemoryPanel memory={selectedAgent.memory} currentTick={tickCount} />
+            <NeedsPanel agent={selectedAgent} />
+            <MemoryPanel memory={selectedAgent.memory} currentTick={tickCount} agentId={selectedAgent.id} />
           </>
         ) : selectedObject ? (
           <>

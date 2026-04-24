@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import MapCanvas, { HoverInfo } from '@/components/MapCanvas';
 import Sidebar from '@/components/Sidebar';
-import { fetchAgent, fetchMeta, postAgentPath, postSimStep, fetchTickCount } from '@/lib/api';
+import { fetchAgent, fetchMeta, postAgentPath, postSimStep, fetchTickCount, fetchDeaths } from '@/lib/api';
 import type {
   AgentDetail,
   AgentInViewEntity,
+  DeathRecord,
   WorldMeta,
   WorldObject,
 } from '@/lib/types';
@@ -26,6 +27,7 @@ export default function HomePage() {
   const [tickCount, setTickCount] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
   const [tickMs, setTickMs] = useState(200);
+  const [deaths, setDeaths] = useState<DeathRecord[]>([]);
 
   useEffect(() => {
     fetchMeta()
@@ -47,13 +49,17 @@ export default function HomePage() {
     return () => ac.abort();
   }, [selectedAgentId, refreshKey, tickCount]);
 
-  // Fetch tick count at SIM_TICK_MS interval
+  // Fetch tick count and deaths at SIM_TICK_MS interval
   useEffect(() => {
     const fetchTickInfo = async () => {
       try {
         const tickInfo = await fetchTickCount();
         setTickCount(tickInfo.tickCount);
         setTickMs(tickInfo.tickMs);
+
+        // Also fetch deaths when tick updates
+        const deathsData = await fetchDeaths();
+        setDeaths(deathsData);
       } catch (error) {
         // Silently fail to avoid spamming console
       }
@@ -90,6 +96,7 @@ export default function HomePage() {
             selectedAgentId={selectedAgentId}
             selectedAgentPath={selectedAgent ? selectedAgent.path : null}
             selectedAgent={selectedAgent}
+            deaths={deaths}
             refreshKey={refreshKey}
             onSelect={(info) => { setSelectedObject(null); setSelectedAgentId(null); setSelected(info); }}
             onSelectObject={(o) => { if (o) setSelectedAgentId(null); setSelectedObject(o); }}

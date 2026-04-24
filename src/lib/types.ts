@@ -113,7 +113,7 @@ export interface AgentTraits {
 }
 
 export interface AgentGoal {
-  type: 'wander' | 'seek_food' | 'seek_water' | string;
+  type: 'wander' | 'seek_food' | 'seek_water' | 'seek_rest' | string;
   targetX: number;
   targetY: number;
   memoryId?: string;
@@ -131,9 +131,12 @@ export interface AgentSummary {
   currentGoal: AgentGoal | null;
   currentAction: string | null;
   targetId: string | null;
+  actionTargetId: string | null;
+  actionTicksRemaining: number;
   hunger: number;
   thirst: number;
   tiredness: number;
+  dead?: boolean;
   traits: AgentTraits;
   pathLength: number;
   pathIndex: number;
@@ -182,6 +185,16 @@ export interface PathResponse {
 export interface SimStepResponse {
   steps: number;
   agents: AgentSummary[];
+}
+
+export interface DeathRecord {
+  id: string;
+  agentId: string;
+  x: number;
+  y: number;
+  tick: number;
+  cause: 'hunger' | 'thirst' | 'tiredness' | 'unknown';
+  timestamp: number;
 }
 
 export interface CellResponse {

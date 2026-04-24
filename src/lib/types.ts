@@ -25,6 +25,42 @@ export interface WorldMeta {
 
 export type LayerName = 'height' | 'groundType' | 'waterDepth' | 'moveCost' | 'blocksVision';
 
+export interface WorldStatistics {
+  world: {
+    width: number;
+    height: number;
+    seed: number;
+    tickCount: number;
+    tickMs: number;
+  };
+  agents: {
+    alive: number;
+    total: number;
+    dead: number;
+    averageNeeds: {
+      hunger: number;
+      thirst: number;
+      tiredness: number;
+    };
+  };
+  deaths: {
+    total: number;
+    byCause: {
+      hunger: number;
+      thirst: number;
+      tiredness: number;
+      unknown: number;
+    };
+  };
+  resources: {
+    foodNodes: number;
+    waterSources: number;
+    restSpots: number;
+    totalObjects: number;
+  };
+  timestamp: number;
+}
+
 export interface ViewportResponse {
   x: number;
   y: number;

@@ -36,7 +36,6 @@ interface Props {
   selectedAgentId?: string | null;
   selectedAgentPath?: { x: number; y: number }[] | null;
   selectedAgent?: AgentDetail | null;
-  deaths?: DeathRecord[];
   refreshKey?: number; // bump to force a re-fetch of entities-in-view
   onSelect?: (info: HoverInfo) => void;
   onSelectObject?: (obj: WorldObject | null) => void;
@@ -150,7 +149,6 @@ export default function MapCanvas({
   selectedAgentId,
   selectedAgentPath,
   selectedAgent,
-  deaths = [],
   refreshKey = 0,
   onSelect,
   onSelectObject,
@@ -792,91 +790,6 @@ export default function MapCanvas({
       ctx.restore();
     }
 
-    // ---- Death locations overlay ----
-    if (deaths && deaths.length > 0) {
-      const W = meta.width;
-      const H = meta.height;
-
-      // Death marker size based on zoom
-      const deathR = Math.max(3, Math.min(8, ppc * 0.6));
-      const cellCenter = 0.5;
-
-      // Define toScreen function for death rendering
-      const toScreen = (wx: number, wy: number) => {
-        let x = wx;
-        let y = wy;
-        const dxw = x - camera.cx;
-        if (dxw > W / 2) x -= W;
-        else if (dxw < -W / 2) x += W;
-        const dyw = y - camera.cy;
-        if (dyw > H / 2) y -= H;
-        else if (dyw < -H / 2) y += H;
-        const sx = (x - worldLeft) * ppc;
-        const sy = (y - worldTop) * ppc;
-        return { sx, sy };
-      };
-
-      ctx.save();
-      ctx.font = `${Math.max(8, Math.min(12, ppc * 2))}px sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-
-      for (const death of deaths) {
-        // Shift world coord to the instance nearest the camera centre to handle wrap
-        let wx = death.x + cellCenter;
-        let wy = death.y + cellCenter;
-        const dx = wx - camera.cx;
-        if (dx > W / 2) wx -= W;
-        else if (dx < -W / 2) wx += W;
-        const dy = wy - camera.cy;
-        if (dy > H / 2) wy -= H;
-        else if (dy < -H / 2) wy += H;
-
-        const { sx, sy } = toScreen(wx, wy);
-
-        // Color based on cause of death
-        let color = '#ff4444'; // default red
-        let symbol = '✝';
-        switch (death.cause) {
-          case 'hunger':
-            color = '#ff6b35'; // orange
-            symbol = '🍖';
-            break;
-          case 'thirst':
-            color = '#3b82f6'; // blue
-            symbol = '💧';
-            break;
-          case 'tiredness':
-            color = '#8b5cf6'; // purple
-            symbol = '😴';
-            break;
-        }
-
-        // Draw death marker
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 2;
-
-        // Draw cross symbol
-        ctx.beginPath();
-        ctx.moveTo(sx - deathR * 0.7, sy - deathR * 0.7);
-        ctx.lineTo(sx + deathR * 0.7, sy + deathR * 0.7);
-        ctx.moveTo(sx + deathR * 0.7, sy - deathR * 0.7);
-        ctx.lineTo(sx - deathR * 0.7, sy + deathR * 0.7);
-        ctx.stroke();
-
-        // Draw circle around cross
-        ctx.beginPath();
-        ctx.arc(sx, sy, deathR, 0, Math.PI * 2);
-        ctx.stroke();
-
-        // Draw symbol if zoomed in enough
-        if (ppc > 4) {
-          ctx.fillStyle = color;
-          ctx.fillText(symbol, sx, sy - deathR - 8);
-        }
-      }
-      ctx.restore();
-    }
 
     // ---- Vision cone + memory overlay (selected agent only) ----
     // Drawn BEFORE the agents overlay so agent glyphs render on top of the cone.

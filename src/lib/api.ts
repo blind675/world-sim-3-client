@@ -3,7 +3,6 @@ import type {
   AgentInViewEntity,
   CellResponse,
   ChunksResponse,
-  DeathRecord,
   EntitiesInViewResponse,
   EntityType,
   LayerName,
@@ -11,6 +10,7 @@ import type {
   SimStepResponse,
   ViewportResponse,
   WorldMeta,
+  WorldStatistics,
 } from './types';
 
 const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
@@ -146,6 +146,6 @@ export async function fetchTickCount(signal?: AbortSignal): Promise<{ tickCount:
   return res.json() as Promise<{ tickCount: number; tickMs: number; agentCount: number }>;
 }
 
-export function fetchDeaths(signal?: AbortSignal) {
-  return getJson<DeathRecord[]>('/api/deaths', signal);
+export function fetchWorldStatistics(signal?: AbortSignal) {
+  return getJson<WorldStatistics>('/api/world/statistics', signal);
 }

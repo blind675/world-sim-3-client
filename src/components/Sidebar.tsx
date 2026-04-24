@@ -29,6 +29,7 @@ interface Props {
   onToggleClusterExtents: (v: boolean) => void;
   tickCount: number;
   onShowTutorial: () => void;
+  onShowStatistics: () => void;
 }
 
 function row(label: string, value: React.ReactNode) {
@@ -272,6 +273,7 @@ export default function Sidebar({
   onToggleClusterExtents,
   tickCount,
   onShowTutorial,
+  onShowStatistics,
 }: Props) {
   return (
     <aside className="w-72 shrink-0 bg-panel border-l border-white/5 p-4 flex flex-col gap-4 overflow-y-auto">
@@ -294,6 +296,14 @@ export default function Sidebar({
             {row('wrap', meta.wrapMode)}
             {row('height', `${meta.terrain.minHeight} … ${meta.terrain.maxHeight} m`)}
             {row('sea', `${meta.terrain.seaLevel} m`)}
+            <div className="mt-2 pt-2 border-t border-white/5">
+              <button
+                onClick={onShowStatistics}
+                className="w-full px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
+              >
+                📊 World Statistics
+              </button>
+            </div>
           </>
         ) : (
           <p className="text-xs text-gray-500">loading…</p>

@@ -2,13 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import type { WorldStatistics } from '@/lib/types';
+import type { WorldMeta } from '@/lib/types';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
+  meta?: WorldMeta | null;
 }
 
-export default function StatisticsModal({ isOpen, onClose }: Props) {
+export default function StatisticsModal({ isOpen, onClose, meta }: Props) {
   const [statistics, setStatistics] = useState<WorldStatistics | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -98,6 +100,30 @@ export default function StatisticsModal({ isOpen, onClose }: Props) {
                   <span className="text-gray-400">Simulation Time:</span>
                   <span className="text-white ml-2">{formatTickTime(statistics.world.tickCount, statistics.world.tickMs)}</span>
                 </div>
+                {meta && (
+                  <>
+                    <div>
+                      <span className="text-gray-400">Cell Size:</span>
+                      <span className="text-white ml-2">{meta.cellSize} m</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">Chunk Size:</span>
+                      <span className="text-white ml-2">{meta.chunkSize}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">Wrap Mode:</span>
+                      <span className="text-white ml-2">{meta.wrapMode}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">Height Range:</span>
+                      <span className="text-white ml-2">{meta.terrain.minHeight} … {meta.terrain.maxHeight} m</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">Sea Level:</span>
+                      <span className="text-white ml-2">{meta.terrain.seaLevel} m</span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -118,7 +144,7 @@ export default function StatisticsModal({ isOpen, onClose }: Props) {
                   <div className="text-sm text-gray-400">Total</div>
                 </div>
               </div>
-              
+
               <div className="border-t border-gray-700 pt-3">
                 <div className="text-sm text-gray-400 mb-2">Average Needs (Living Agents)</div>
                 <div className="space-y-2">
@@ -145,7 +171,7 @@ export default function StatisticsModal({ isOpen, onClose }: Props) {
                 <div className="text-2xl font-bold text-red-400">{formatNumber(statistics.deaths.total)}</div>
                 <div className="text-sm text-gray-400">Total Deaths</div>
               </div>
-              
+
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-orange-400">Hunger:</span>

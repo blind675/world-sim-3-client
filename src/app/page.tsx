@@ -89,7 +89,7 @@ export default function HomePage() {
   return (
     <div className="h-screen w-screen flex">
       <TutorialModal isOpen={showTutorial} onClose={() => setShowTutorial(false)} />
-      <StatisticsModal isOpen={showStatistics} onClose={() => setShowStatistics(false)} />
+      <StatisticsModal isOpen={showStatistics} onClose={() => setShowStatistics(false)} meta={meta} />
       <main className="flex-1 relative bg-black">
         {meta ? (
           <MapCanvas

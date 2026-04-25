@@ -291,11 +291,6 @@ export default function Sidebar({
           <>
             {row('seed', meta.seed)}
             {row('size', `${meta.width} × ${meta.height}`)}
-            {row('cell', `${meta.cellSize} m`)}
-            {row('chunk', `${meta.chunkSize}`)}
-            {row('wrap', meta.wrapMode)}
-            {row('height', `${meta.terrain.minHeight} … ${meta.terrain.maxHeight} m`)}
-            {row('sea', `${meta.terrain.seaLevel} m`)}
             <div className="mt-2 pt-2 border-t border-white/5">
               <button
                 onClick={onShowStatistics}

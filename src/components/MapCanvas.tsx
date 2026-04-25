@@ -161,7 +161,7 @@ export default function MapCanvas({
   const [camera, setCamera] = useState<Camera>(() => ({
     cx: meta.width / 2,
     cy: meta.height / 2,
-    ppc: 3,
+    ppc: 5,
   }));
 
   // Initialize camera to focus on first agent after meta loads
@@ -216,14 +216,14 @@ export default function MapCanvas({
   }, []);
 
   // ---- Zoom bounds derived from chunk size ----
-  // Farthest out: at most 10 chunks wide AND 8 chunks tall visible.
-  // Closest in: at most 1/3 chunk across the shorter screen axis.
+  // Farthest out: at most 6 chunks wide AND 4 chunks tall visible.
+  // Closest in: at most 1/4 chunk across the shorter screen axis.
   const { ppcMinOut, ppcMaxIn } = useMemo(() => {
-    const ppcByW = size.w / (10 * cs);
-    const ppcByH = size.h / (8 * cs);
+    const ppcByW = size.w / (6 * cs);
+    const ppcByH = size.h / (4 * cs);
     const out = Math.max(ppcByW, ppcByH); // both constraints must hold
     const shorter = Math.max(1, Math.min(size.w, size.h));
-    const maxIn = (3 * shorter) / cs;
+    const maxIn = (4 * shorter) / cs;
     return { ppcMinOut: out, ppcMaxIn: maxIn };
   }, [size.w, size.h, cs]);
 
@@ -1219,7 +1219,7 @@ export default function MapCanvas({
     if (dragState?.active) {
       const dx = e.clientX - dragState.startX;
       const dy = e.clientY - dragState.startY;
-      setCamera((c) => ({ ...c, cx: dragState.camCx - dx, cy: dragState.camCy - dy }));
+      setCamera((c) => ({ ...c, cx: dragState.camCx - dx / c.ppc, cy: dragState.camCy - dy / c.ppc }));
       return;
     }
 

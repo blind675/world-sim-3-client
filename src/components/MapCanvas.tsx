@@ -215,14 +215,14 @@ export default function MapCanvas({
   }, []);
 
   // ---- Zoom bounds derived from chunk size ----
-  // Farthest out: at most 10 chunks wide AND 8 chunks tall visible.
-  // Closest in: at most 1/4 chunk across the shorter screen axis.
+  // Farthest out: at most 16 chunks wide AND 12 chunks tall visible.
+  // Closest in: at most 1/2 chunk across the shorter screen axis.
   const { ppcMinOut, ppcMaxIn } = useMemo(() => {
-    const ppcByW = size.w / (10 * cs);
-    const ppcByH = size.h / (8 * cs);
+    const ppcByW = size.w / (16 * cs);
+    const ppcByH = size.h / (12 * cs);
     const out = Math.max(ppcByW, ppcByH); // both constraints must hold
     const shorter = Math.max(1, Math.min(size.w, size.h));
-    const maxIn = (4 * shorter) / cs;
+    const maxIn = (2 * shorter) / cs;
     return { ppcMinOut: out, ppcMaxIn: maxIn };
   }, [size.w, size.h, cs]);
 
@@ -374,7 +374,7 @@ export default function MapCanvas({
     return () => clearInterval(pollInterval);
   }, [meta.simulation.tickMs, selectedAgentId, agentsInView]);
 
-  // ---- Paint a single chunk's data into a 128x128 cached canvas for the active layer. ----
+  // ---- Paint a single chunk's data into a cached canvas for the active layer. ----
   const paintChunkCanvas = useCallback(
     (entry: ChunkEntry, forLayer: LayerKey) => {
       if (!entry.data) return;

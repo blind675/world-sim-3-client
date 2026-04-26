@@ -127,6 +127,9 @@ export interface AgentInViewEntity {
   currentTick: number;
   moveSpeed: number;
   isMoving: boolean;
+  // Full path for frontend animation
+  path?: { x: number; y: number }[];
+  pathIndex?: number;
 }
 
 export type InViewEntity = WorldObject | AgentInViewEntity;

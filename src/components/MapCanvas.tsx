@@ -55,7 +55,7 @@ interface ChunkData {
   moveCost: Float32Array; // -1 means impassable
 }
 
-// Map to track movement start times for smooth interpolation
+// Map to track movement start times for smooth interpolation (legacy)
 const movementStartTimes = new Map<string, number>();
 
 // RGB triples keyed by memory type. Kept in sync with the Sidebar legend
@@ -68,7 +68,6 @@ const MEMORY_TYPE_RGB: Record<string, [number, number, number]> = {
   rest_spot: [138, 100, 54],
   agent: [255, 184, 77],
 };
-
 // Interpolation function for smooth agent movement
 function interpolateAgentPosition(agent: AgentInViewEntity, currentAnimTime: number, tickMs: number): { x: number; y: number } {
   if (!agent.isMoving || !agent.movementStartPos || !agent.targetPos) {
@@ -93,8 +92,8 @@ function interpolateAgentPosition(agent: AgentInViewEntity, currentAnimTime: num
   }
 
   // Use simulation tick interval for animation timing
-  // Animation should span the entire tick interval for smooth movement
-  const movementDuration = tickMs / agent.moveSpeed; // ms per tick
+  // Animation should span twice the tick interval for smoother movement
+  const movementDuration = (tickMs / agent.moveSpeed);
   const elapsedSinceStart = currentAnimTime - movementStartTimes.get(agent.id)!;
   const progress = Math.min(elapsedSinceStart / movementDuration, 1);
 
@@ -216,11 +215,11 @@ export default function MapCanvas({
   }, []);
 
   // ---- Zoom bounds derived from chunk size ----
-  // Farthest out: at most 6 chunks wide AND 4 chunks tall visible.
+  // Farthest out: at most 10 chunks wide AND 8 chunks tall visible.
   // Closest in: at most 1/4 chunk across the shorter screen axis.
   const { ppcMinOut, ppcMaxIn } = useMemo(() => {
-    const ppcByW = size.w / (6 * cs);
-    const ppcByH = size.h / (4 * cs);
+    const ppcByW = size.w / (10 * cs);
+    const ppcByH = size.h / (8 * cs);
     const out = Math.max(ppcByW, ppcByH); // both constraints must hold
     const shorter = Math.max(1, Math.min(size.w, size.h));
     const maxIn = (4 * shorter) / cs;
@@ -359,7 +358,7 @@ export default function MapCanvas({
   // Animation frame state to trigger re-renders for smooth movement
   const [animationFrame, setAnimationFrame] = useState(0);
 
-  // ---- Real-time agent animation polling ----
+  // ---- Real-time agent polling with logging ----
   useEffect(() => {
     // Use exact tick interval for polling - no need for more frequent updates
     const pollInterval = setInterval(async () => {
@@ -373,7 +372,7 @@ export default function MapCanvas({
     }, meta.simulation.tickMs); // Poll exactly when ticks occur
 
     return () => clearInterval(pollInterval);
-  }, [meta.simulation.tickMs]);
+  }, [meta.simulation.tickMs, selectedAgentId, agentsInView]);
 
   // ---- Paint a single chunk's data into a 128x128 cached canvas for the active layer. ----
   const paintChunkCanvas = useCallback(
@@ -406,10 +405,13 @@ export default function MapCanvas({
               r = Math.round(hr * 0.5); g = Math.round(hg * 0.5); b = Math.round(hb * 0.5);
             }
           }
-          const p = idx * 4;
-          d[p] = r; d[p + 1] = g; d[p + 2] = b; d[p + 3] = 255;
+          d[4 * idx] = r;
+          d[4 * idx + 1] = g;
+          d[4 * idx + 2] = b;
+          d[4 * idx + 3] = 255;
         }
       }
+
       ctx.putImageData(img, 0, 0);
       entry.canvas = canvas;
       entry.renderedLayer = forLayer;
@@ -464,11 +466,11 @@ export default function MapCanvas({
       // zoom and don't swamp the view at high zoom. Detailed glyphs kick in
       // above `detailPpc` — below that we fall back to simple shapes so tiny
       // dots at max zoom-out remain readable.
-      const treeR = Math.max(2, Math.min(8, ppc * 1.0));
-      const rockR = Math.max(2, Math.min(6, ppc * 0.8));
-      const foodR = Math.max(2, Math.min(5, ppc * 0.75));
-      const waterR = Math.max(2, Math.min(6, ppc * 0.8));
-      const restR = Math.max(3, Math.min(7, ppc * 0.95));
+      const treeR = Math.max(2, Math.min(12, ppc * 1.5));
+      const rockR = Math.max(2, Math.min(9, ppc * 1.2));
+      const foodR = Math.max(2, Math.min(8, ppc * 1.1));
+      const waterR = Math.max(2, Math.min(9, ppc * 1.2));
+      const restR = Math.max(3, Math.min(10, ppc * 1.4));
       const detailPpc = 3.5;
 
       // Pre-compute center cell offset (+0.5) so objects sit in the middle
@@ -956,7 +958,7 @@ export default function MapCanvas({
     if (agentsInView.length > 0) {
       const W = meta.width;
       const H = meta.height;
-      const agentR = Math.max(3, Math.min(8, ppc * 1.0));
+      const agentR = Math.max(3, Math.min(12, ppc * 1.5));
       for (const a of agentsInView) {
         // Use interpolated position for smooth animation
         const interpolatedPos = interpolateAgentPosition(a, animationFrame, meta.simulation.tickMs);
@@ -1307,6 +1309,55 @@ export default function MapCanvas({
     // Right-click disabled - simulation runs automatically
     e.preventDefault();
   };
+
+  // ---- Spacebar handler: select closest agent and center camera ----
+  const onKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.code === 'Space' && !e.repeat && agentsInView.length > 0) {
+      e.preventDefault();
+
+      // Find closest agent to current camera center
+      const W = meta.width;
+      const H = meta.height;
+      let closestAgent: AgentInViewEntity | null = null;
+      let minDistance = Infinity;
+
+      for (const agent of agentsInView) {
+        // Handle world wrapping for distance calculation
+        let dx = agent.x - camera.cx;
+        let dy = agent.y - camera.cy;
+
+        // Wrap distances to find shortest path
+        if (dx > W / 2) dx -= W;
+        else if (dx < -W / 2) dx += W;
+        if (dy > H / 2) dy -= H;
+        else if (dy < -H / 2) dy += H;
+
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance < minDistance) {
+          minDistance = distance;
+          closestAgent = agent;
+        }
+      }
+
+      if (closestAgent && onSelectAgent) {
+        // Select the closest agent
+        onSelectAgent(closestAgent);
+
+        // Center camera on the selected agent
+        setCamera(prev => ({
+          ...prev,
+          cx: closestAgent.x,
+          cy: closestAgent.y
+        }));
+      }
+    }
+  }, [agentsInView, camera.cx, camera.cy, meta.width, meta.height, onSelectAgent]);
+
+  // Add keyboard event listener
+  useEffect(() => {
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onKeyDown]);
 
   // ---- Loading indicator stats ----
   const { readyCount, loadingCount } = useMemo(() => {

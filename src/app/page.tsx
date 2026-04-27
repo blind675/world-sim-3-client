@@ -30,6 +30,7 @@ export default function HomePage() {
   const [tickMs, setTickMs] = useState(200);
   const [showTutorial, setShowTutorial] = useState(false);
   const [showStatistics, setShowStatistics] = useState(false);
+  const [chunksReadyChecker, setChunksReadyChecker] = useState<(() => boolean) | null>(null);
 
   useEffect(() => {
     fetchMeta()
@@ -63,7 +64,7 @@ export default function HomePage() {
   useEffect(() => {
     const fetchTickInfo = async () => {
       try {
-        const tickInfo = await fetchTickCount();
+        const tickInfo = await fetchTickCount(undefined, chunksReadyChecker || undefined);
         setTickCount(tickInfo.tickCount);
         setTickMs(tickInfo.tickMs);
       } catch (error) {
@@ -77,10 +78,8 @@ export default function HomePage() {
     // Set up interval to fetch at SIM_TICK_MS rate
     const intervalId = setInterval(fetchTickInfo, tickMs);
 
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, [tickMs]);
+    return () => clearInterval(intervalId);
+  }, [tickMs, chunksReadyChecker]);
 
   const onSelectAgent = useCallback((a: AgentInViewEntity | null) => {
     setSelectedAgentId(a ? a.id : null);
@@ -108,6 +107,7 @@ export default function HomePage() {
             onSelect={(info) => { setSelectedObject(null); setSelectedAgentId(null); setSelected(info); }}
             onSelectObject={(o) => { if (o) setSelectedAgentId(null); setSelectedObject(o); }}
             onSelectAgent={onSelectAgent}
+            onChunksReady={setChunksReadyChecker}
           />
         ) : (
           <div className="h-full flex items-center justify-center text-sm text-gray-400">

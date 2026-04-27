@@ -133,7 +133,25 @@ export async function fetchAllAgents(signal?: AbortSignal): Promise<AgentInViewE
   return data.agents || [];
 }
 
-export async function fetchTickCount(signal?: AbortSignal): Promise<{ tickCount: number; tickMs: number; agentCount: number }> {
+export async function fetchTickCount(
+  signal?: AbortSignal,
+  chunksReadyChecker?: () => boolean
+): Promise<{ tickCount: number; tickMs: number; agentCount: number }> {
+  // If chunks ready checker is provided, wait until chunks are ready
+  if (chunksReadyChecker) {
+    const maxWaitTime = 10000; // Maximum wait time of 10 seconds
+    const startTime = Date.now();
+
+    while (!chunksReadyChecker()) {
+      if (Date.now() - startTime > maxWaitTime) {
+        // Timeout after maxWaitTime, proceed anyway
+        break;
+      }
+      // Wait 100ms before checking again
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+  }
+
   const res = await fetch(`${BASE}/api/simulation/status`, {
     method: 'GET',
     signal,

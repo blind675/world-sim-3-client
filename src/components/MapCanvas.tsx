@@ -40,6 +40,7 @@ interface Props {
   onSelect?: (info: HoverInfo) => void;
   onSelectObject?: (obj: WorldObject | null) => void;
   onSelectAgent?: (a: AgentInViewEntity | null) => void;
+  onChunksReady?: (chunksReadyChecker: () => boolean) => void; // Callback to expose chunks ready state
 }
 
 interface Camera {
@@ -152,6 +153,7 @@ export default function MapCanvas({
   onSelect,
   onSelectObject,
   onSelectAgent,
+  onChunksReady,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -248,6 +250,35 @@ export default function MapCanvas({
 
     return { cxMin, cyMin, cxMax, cyMax, worldLeft, worldTop };
   }, [camera.cx, camera.cy, camera.ppc, size.w, size.h, cs]);
+
+  // ---- Expose chunks ready state to parent ----
+  useEffect(() => {
+    if (onChunksReady) {
+      // Provide a function that checks if enough chunks are ready (same logic as agents fetching)
+      const chunksReadyChecker = () => {
+        const { cxMin, cyMin, cxMax, cyMax } = visibleChunks;
+        const requiredChunkKeys = [];
+        for (let cx = cxMin; cx <= cxMax; cx++) {
+          for (let cy = cyMin; cy <= cyMax; cy++) {
+            const wcx = wrapIndex(cx, chunksW);
+            const wcy = wrapIndex(cy, chunksH);
+            requiredChunkKeys.push(chunkKey(wcx, wcy));
+          }
+        }
+
+        const loadedChunksCount = requiredChunkKeys.filter(key => {
+          const chunk = chunksRef.current.get(key);
+          return chunk && chunk.status === 'ready';
+        }).length;
+
+        // Allow when at least 75% of chunks are loaded (same as entity fetching)
+        const minimumRequiredChunks = Math.ceil(requiredChunkKeys.length * 0.75);
+        return loadedChunksCount >= minimumRequiredChunks;
+      };
+
+      onChunksReady(chunksReadyChecker);
+    }
+  }, [onChunksReady, visibleChunks, chunksW, chunksH, cacheTick]);
 
   // ---- Fetch missing chunks ----
   useEffect(() => {

@@ -21,7 +21,7 @@ export default function HomePage() {
   const [selectedObject, setSelectedObject] = useState<WorldObject | null>(null);
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [selectedAgent, setSelectedAgent] = useState<AgentDetail | null>(null);
-  const [showChunkGrid, setShowChunkGrid] = useState(true);
+  const [showChunkGrid, setShowChunkGrid] = useState(false);
   const [showObjects, setShowObjects] = useState(true);
   const [showVision, setShowVision] = useState(true);
   const [showClusterExtents, setShowClusterExtents] = useState(true);

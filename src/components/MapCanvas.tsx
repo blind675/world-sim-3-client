@@ -324,8 +324,32 @@ export default function MapCanvas({
   // ---- Fetch objects (trees, rocks) for the visible rect ----
   // Keyed on the visible chunk range so we don't refetch on every pan pixel.
   // A small AbortController cancels stale requests when the view moves quickly.
+  // Waits for chunks to be loaded before fetching entities and agents.
   useEffect(() => {
     const { cxMin, cyMin, cxMax, cyMax } = visibleChunks;
+
+    // Check if all required chunks are loaded
+    const requiredChunkKeys = [];
+    for (let cx = cxMin; cx <= cxMax; cx++) {
+      for (let cy = cyMin; cy <= cyMax; cy++) {
+        requiredChunkKeys.push(chunkKey(cx, cy));
+      }
+    }
+
+    const loadedChunksCount = requiredChunkKeys.filter(key => {
+      const chunk = chunksRef.current.get(key);
+      return chunk && chunk.status === 'ready';
+    }).length;
+
+    // Be more lenient: allow entity fetching when at least 75% of chunks are loaded
+    const minimumRequiredChunks = Math.ceil(requiredChunkKeys.length * 0.75);
+    const enoughChunksLoaded = loadedChunksCount >= minimumRequiredChunks;
+
+    if (!enoughChunksLoaded) {
+      // Don't fetch entities until enough chunks are ready
+      return;
+    }
+
     const x = cxMin * cs;
     const y = cyMin * cs;
     const w = (cxMax - cxMin + 1) * cs;
@@ -353,15 +377,70 @@ export default function MapCanvas({
         console.error('entities fetch failed', err);
       });
     return () => ac.abort();
-  }, [visibleChunks, cs, showObjects, refreshKey]);
+  }, [visibleChunks, cs, showObjects, refreshKey, cacheTick]); // Add cacheTick to re-run when chunks are loaded
 
   // Animation frame state to trigger re-renders for smooth movement
   const [animationFrame, setAnimationFrame] = useState(0);
+
+  // ---- Camera following for selected agent ----
+  useEffect(() => {
+    if (!selectedAgent) return;
+
+    // Create a compatible agent object for interpolation from selectedAgent
+    const agentForInterpolation = {
+      id: selectedAgent.id,
+      type: 'agent' as const,
+      x: selectedAgent.x,
+      y: selectedAgent.y,
+      isMoving: false, // We'll use static position for simplicity
+      movementStartPos: { x: selectedAgent.x, y: selectedAgent.y },
+      targetPos: { x: selectedAgent.x, y: selectedAgent.y },
+      currentTick: 0,
+      moveSpeed: 1.0
+    };
+
+    // Smooth camera follow with interpolation
+    const followAgent = () => {
+      setCamera(prevCamera => {
+        // Use the agent's current position directly (no interpolation needed for static following)
+        const targetCx = selectedAgent.x;
+        const targetCy = selectedAgent.y;
+
+        // Smooth interpolation factor (lower = smoother but slower)
+        const smoothFactor = 0.15;
+        const newCx = prevCamera.cx + (targetCx - prevCamera.cx) * smoothFactor;
+        const newCy = prevCamera.cy + (targetCy - prevCamera.cy) * smoothFactor;
+
+        // Only update if position changed significantly to avoid unnecessary renders
+        const threshold = 0.01;
+        if (Math.abs(newCx - prevCamera.cx) < threshold && Math.abs(newCy - prevCamera.cy) < threshold) {
+          return prevCamera;
+        }
+
+        return { ...prevCamera, cx: newCx, cy: newCy };
+      });
+    };
+
+    // Follow agent on each animation frame
+    const intervalId = setInterval(followAgent, 50); // 20 FPS for smooth following
+
+    return () => clearInterval(intervalId);
+  }, [selectedAgent]);
 
   // ---- Real-time agent polling with logging ----
   useEffect(() => {
     // Use exact tick interval for polling - no need for more frequent updates
     const pollInterval = setInterval(async () => {
+      // Check if any chunks are currently loading before polling agents
+      const hasLoadingChunks = Array.from(chunksRef.current.values()).some(
+        chunk => chunk.status === 'loading'
+      );
+
+      if (hasLoadingChunks) {
+        // Skip agent polling while chunks are still loading
+        return;
+      }
+
       try {
         const allAgents = await fetchAllAgents();
         setAgentsInView(allAgents);
@@ -372,7 +451,7 @@ export default function MapCanvas({
     }, meta.simulation.tickMs); // Poll exactly when ticks occur
 
     return () => clearInterval(pollInterval);
-  }, [meta.simulation.tickMs, selectedAgentId, agentsInView]);
+  }, [meta.simulation.tickMs, cacheTick]); // Add cacheTick dependency to re-check when chunks load
 
   // ---- Paint a single chunk's data into a cached canvas for the active layer. ----
   const paintChunkCanvas = useCallback(
@@ -453,7 +532,17 @@ export default function MapCanvas({
           paintChunkCanvas(entry, layer);
         }
         if (entry.canvas) {
-          ctx.drawImage(entry.canvas, 0, 0, cs, cs, screenX, screenY, drawSize, drawSize);
+          // Ensure seamless chunk rendering by using exact positioning and sizing
+          // Round to nearest pixel to avoid sub-pixel gaps
+          const roundedScreenX = Math.round(screenX);
+          const roundedScreenY = Math.round(screenY);
+          const roundedDrawSize = Math.round(drawSize);
+
+          ctx.drawImage(
+            entry.canvas,
+            0, 0, cs, cs,
+            roundedScreenX, roundedScreenY, roundedDrawSize, roundedDrawSize
+          );
         }
       }
     }

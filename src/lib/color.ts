@@ -48,7 +48,8 @@ export function heightColor(
 }
 
 export const GROUND_COLORS: Record<string, [number, number, number]> = {
-  ground: [150, 170, 110],
+  ground: [170, 160, 100],              // More yellow/brown lighter green
+  short_grass: [150, 170, 110],         // Green (old ground color)
   tall_grass: [100, 150, 80],
   forest_floor: [60, 95, 55],
   mud: [110, 85, 60],

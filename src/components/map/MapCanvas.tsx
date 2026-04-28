@@ -250,11 +250,13 @@ export default function MapCanvas({
       drawObjects({ ctx, objects: objectsInView, selectedObject: selectedObject ?? null, ...sharedDrawProps });
     }
 
-    // Path overlay (below agents)
+    // Path overlay (below agents) — prefer live path from polling over stale prop
+    const liveSelectedAgent = agentsInView.find((a) => a.id === selectedAgentId);
+    const livePath = liveSelectedAgent?.path ?? selectedAgentPath ?? null;
     drawPathOverlay({
       ctx,
       selectedAgentId: selectedAgentId ?? null,
-      selectedAgentPath: selectedAgentPath ?? null,
+      selectedAgentPath: livePath,
       agentsInView,
       animationFrame,
       tickMs: meta.simulation.tickMs,

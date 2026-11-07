@@ -196,7 +196,10 @@ export default function StatisticsModal({ isOpen, onClose, meta }: Props) {
 
             {/* Resource Statistics */}
             <div className="bg-gray-800 rounded p-4">
-              <h3 className="text-lg font-semibold text-white mb-3">Resource Statistics</h3>
+              <h3 className="text-lg font-semibold text-white mb-1">Generated Area Resources</h3>
+              <p className="text-xs text-gray-400 mb-3">
+                Counts cover {formatNumber(statistics.resources.generatedChunks)} of {formatNumber(statistics.resources.totalChunks)} world chunks visited so far.
+              </p>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div className="flex justify-between">
                   <span className="text-red-400">Food Nodes:</span>

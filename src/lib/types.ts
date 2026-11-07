@@ -57,6 +57,8 @@ export interface WorldStatistics {
     waterSources: number;
     restSpots: number;
     totalObjects: number;
+    generatedChunks: number;
+    totalChunks: number;
   };
   timestamp: number;
 }

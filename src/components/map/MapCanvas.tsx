@@ -138,6 +138,8 @@ export default function MapCanvas({
   const { objectsInView, agentsInView, setAgentsInView } = useEntitiesPolling({
     visibleChunks,
     chunkSize: cs,
+    chunksW,
+    chunksH,
     showObjects: showObjects ?? false,
     refreshKey,
     cacheTick,

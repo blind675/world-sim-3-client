@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
-import { fetchEntitiesInView, fetchAllAgents } from '@/lib/api';
+import { fetchEntitiesInView } from '@/lib/api';
 import type { AgentInViewEntity, WorldObject } from '@/lib/types';
 import type { ChunkEntry } from './useChunkCache';
-import { chunkKey } from '@/lib/mapCamera';
+import { chunkKey, wrapIndex } from '@/lib/mapCamera';
 
 interface UseEntitiesPollingOptions {
   visibleChunks: { cxMin: number; cyMin: number; cxMax: number; cyMax: number };
   chunkSize: number;
+  chunksW: number;
+  chunksH: number;
   showObjects: boolean;
   refreshKey: number;
   cacheTick: number;
@@ -17,6 +19,8 @@ interface UseEntitiesPollingOptions {
 export function useEntitiesPolling({
   visibleChunks,
   chunkSize: cs,
+  chunksW,
+  chunksH,
   showObjects,
   refreshKey,
   cacheTick,
@@ -38,7 +42,7 @@ export function useEntitiesPolling({
     const requiredKeys: string[] = [];
     for (let cx = cxMin; cx <= cxMax; cx++) {
       for (let cy = cyMin; cy <= cyMax; cy++) {
-        requiredKeys.push(chunkKey(cx, cy));
+        requiredKeys.push(chunkKey(wrapIndex(cx, chunksW), wrapIndex(cy, chunksH)));
       }
     }
 
@@ -89,26 +93,35 @@ export function useEntitiesPolling({
     // cacheTick is intentionally included so this re-runs as chunks load in,
     // but the viewportKey guard above prevents duplicate HTTP requests.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visibleChunks, cs, showObjects, refreshKey, cacheTick]);
+  }, [visibleChunks, cs, chunksW, chunksH, showObjects, refreshKey, cacheTick]);
 
-  // ---- Real-time agent polling ----
+  // Poll the visible area only; the global agent list grows with the world.
   useEffect(() => {
-    const pollInterval = setInterval(async () => {
-      const hasLoadingChunks = Array.from(chunksRef.current?.values() ?? []).some(
-        (c) => c.status === 'loading',
-      );
-      if (hasLoadingChunks) return;
-
+    const ac = new AbortController();
+    const { cxMin, cyMin, cxMax, cyMax } = visibleChunks;
+    let inFlight = false;
+    const poll = async () => {
+      if (inFlight) return;
+      inFlight = true;
       try {
-        const allAgents = await fetchAllAgents();
-        setAgentsInView(allAgents);
+        const response = await fetchEntitiesInView({
+          x: cxMin * cs,
+          y: cyMin * cs,
+          w: (cxMax - cxMin + 1) * cs,
+          h: (cyMax - cyMin + 1) * cs,
+          types: ['agent'],
+        }, ac.signal);
+        setAgentsInView(response.objects.filter((entity): entity is AgentInViewEntity => entity.type === 'agent'));
       } catch {
-        // silently ignore poll errors
+        // Keep the last known agent positions during a transient request failure.
+      } finally {
+        inFlight = false;
       }
-    }, tickMs);
+    };
+    const pollInterval = setInterval(poll, tickMs);
 
-    return () => clearInterval(pollInterval);
-  }, [tickMs]);
+    return () => { clearInterval(pollInterval); ac.abort(); };
+  }, [visibleChunks, cs, tickMs]);
 
   return { objectsInView, agentsInView, setAgentsInView };
 }

@@ -48,21 +48,21 @@ export default function StatisticsModal({ isOpen, onClose, meta }: Props) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-gray-900 rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-white">World Statistics</h2>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4" style={{ paddingTop: 'max(8px, env(safe-area-inset-top))', paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}>
+      <div className="bg-gray-900 rounded-lg p-4 sm:p-6 max-w-2xl w-full min-w-0 max-h-full overflow-y-auto overscroll-contain break-words">
+        <div className="flex flex-wrap justify-between items-center gap-2 mb-4 sm:mb-6">
+          <h2 className="text-lg sm:text-2xl font-bold text-white">World Statistics</h2>
           <div className="flex gap-2">
             <button
               onClick={fetchStatistics}
               disabled={loading}
-              className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="min-h-11 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Loading...' : 'Refresh'}
             </button>
             <button
               onClick={onClose}
-              className="px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-700"
+              className="min-h-11 px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-700"
             >
               Close
             </button>
@@ -80,7 +80,7 @@ export default function StatisticsModal({ isOpen, onClose, meta }: Props) {
             {/* World Information */}
             <div className="bg-gray-800 rounded p-4">
               <h3 className="text-lg font-semibold text-white mb-3">World Information</h3>
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                 <div>
                   <span className="text-gray-400">Dimensions:</span>
                   <span className="text-white ml-2">{formatNumber(statistics.world.width)} × {formatNumber(statistics.world.height)}</span>

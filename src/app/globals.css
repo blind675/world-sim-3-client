@@ -4,8 +4,12 @@
 
 html, body, #__next {
   height: 100%;
+  width: 100%;
+  overflow: hidden;
 }
 body {
+  margin: 0;
   background-color: #0b0d11;
   color: #e5e7eb;
 }
+button, input { -webkit-tap-highlight-color: transparent; }

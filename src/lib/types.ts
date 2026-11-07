@@ -120,6 +120,7 @@ export interface AgentInViewEntity {
   y: number;
   facing: number;
   state: string;
+  dead?: boolean;
   currentGoal?: AgentGoal;
   currentAction?: string;
   // Movement data for interpolation

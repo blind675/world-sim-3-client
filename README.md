@@ -23,5 +23,5 @@ npm run lint
 npm run build
 ```
 
-The backend serves live simulation data. This repository renders and inspects it; see `src/lib/api.ts` for API calls. Mobile layout and PWA installation are future work.
+The backend serves live simulation data. This repository renders and inspects it; see `src/lib/api.ts` for API calls. On a phone, swipe the map to pan, pinch or use the zoom buttons, and open **Layers & details** for display settings and agent details. **Find agent** opens a searchable list of living agents; selecting one centers and highlights it. Turn on **Follow agent** in its details to keep the camera centered as it moves. Panning turns follow off. Desktop retains the sidebar. PWA installation is future work.
 The public viewer does not send simulation control requests. Production controls require a server-side sign-in flow and must never embed a backend control token in `NEXT_PUBLIC_*` variables.

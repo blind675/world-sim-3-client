@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { fetchAllAgents } from '@/lib/api';
 import type { AgentDetail, AgentInViewEntity, WorldObject, WorldMeta } from '@/lib/types';
 import {
   Camera,
@@ -42,6 +41,9 @@ interface Props {
   selectedAgentId?: string | null;
   selectedAgentPath?: { x: number; y: number }[] | null;
   selectedAgent?: AgentDetail | null;
+  focusTarget?: { id: string; x: number; y: number; nonce: number } | null;
+  following?: boolean;
+  onManualPan?: () => void;
   refreshKey?: number;
   onSelect?: (info: HoverInfo) => void;
   onSelectObject?: (obj: WorldObject | null) => void;
@@ -61,6 +63,9 @@ export default function MapCanvas({
   selectedAgentId,
   selectedAgentPath,
   selectedAgent,
+  focusTarget,
+  following = false,
+  onManualPan,
   refreshKey = 0,
   onSelect,
   onSelectObject,
@@ -76,22 +81,6 @@ export default function MapCanvas({
     cy: meta.height / 2,
     ppc: 5,
   }));
-
-  // Initialize camera to focus on first agent after meta loads
-  useEffect(() => {
-    if (meta.width > 0) {
-      fetchAllAgents()
-        .then((agents) => {
-          console.log('Camera init: fetched agents:', agents.length);
-          if (agents.length > 0) {
-            const firstAgent = agents[0];
-            console.log('Camera init: positioning to agent', firstAgent.id, 'at', firstAgent.x, firstAgent.y);
-            setCamera((prev) => ({ ...prev, cx: firstAgent.x, cy: firstAgent.y }));
-          }
-        })
-        .catch((err) => console.error('Failed to fetch agents for camera init:', err));
-    }
-  }, [meta.width]);
 
   const cs = meta.chunkSize;
 
@@ -150,16 +139,21 @@ export default function MapCanvas({
   const [tooltip, setTooltip] = useState<{ x: number; y: number; content: string } | null>(null);
   const [animationFrame, setAnimationFrame] = useState(0);
 
+  // A jump centers once. Following is an explicit, separate choice.
+  useEffect(() => {
+    if (!focusTarget) return;
+    setCamera(c => ({ ...c, cx: focusTarget.x + 0.5, cy: focusTarget.y + 0.5, ppc: Math.max(c.ppc, 2.5) }));
+  }, [focusTarget]);
+
   // ---- Camera following for selected agent ----
   useEffect(() => {
-    if (!selectedAgent) return;
+    if (!following || !selectedAgent) return;
     const followAgent = () => {
       setCamera((prevCamera) => {
-        const targetCx = selectedAgent.x;
-        const targetCy = selectedAgent.y;
-        const smoothFactor = 0.15;
-        const newCx = prevCamera.cx + (targetCx - prevCamera.cx) * smoothFactor;
-        const newCy = prevCamera.cy + (targetCy - prevCamera.cy) * smoothFactor;
+        const dx = ((selectedAgent.x + 0.5 - prevCamera.cx + meta.width * 1.5) % meta.width) - meta.width / 2;
+        const dy = ((selectedAgent.y + 0.5 - prevCamera.cy + meta.height * 1.5) % meta.height) - meta.height / 2;
+        const newCx = prevCamera.cx + dx * 0.2;
+        const newCy = prevCamera.cy + dy * 0.2;
         const threshold = 0.01;
         if (
           Math.abs(newCx - prevCamera.cx) < threshold &&
@@ -172,7 +166,7 @@ export default function MapCanvas({
     };
     const intervalId = setInterval(followAgent, 50);
     return () => clearInterval(intervalId);
-  }, [selectedAgent]);
+  }, [selectedAgent, following, meta.width, meta.height]);
 
   // ---- Continuous animation loop ----
   useEffect(() => {
@@ -280,9 +274,12 @@ export default function MapCanvas({
     }
 
     // Agents
+    const drawList = selectedAgent && !agentsInView.some(agent => agent.id === selectedAgent.id)
+      ? [...agentsInView, { id: selectedAgent.id, type: 'agent' as const, x: selectedAgent.x, y: selectedAgent.y, facing: selectedAgent.facing, state: selectedAgent.state, currentTick: 0, moveSpeed: selectedAgent.traits.moveSpeed, isMoving: false }]
+      : agentsInView;
     drawAgents({
       ctx,
-      agents: agentsInView,
+      agents: drawList,
       selectedAgentId: selectedAgentId ?? null,
       animationFrame,
       tickMs: meta.simulation.tickMs,
@@ -392,13 +389,16 @@ export default function MapCanvas({
 
   const pickAgent = useCallback(
     (sx: number, sy: number, pxThreshold = 12): AgentInViewEntity | null => {
-      if (agentsInView.length === 0) return null;
+      const candidates = selectedAgent && !agentsInView.some(agent => agent.id === selectedAgent.id)
+        ? [...agentsInView, { id: selectedAgent.id, type: 'agent' as const, x: selectedAgent.x, y: selectedAgent.y, facing: selectedAgent.facing, state: selectedAgent.state, currentTick: 0, moveSpeed: selectedAgent.traits.moveSpeed, isMoving: false }]
+        : agentsInView;
+      if (candidates.length === 0) return null;
       const ppc = camera.ppc;
       const worldLeft = camera.cx - size.w / (2 * ppc);
       const worldTop = camera.cy - size.h / (2 * ppc);
       let best: AgentInViewEntity | null = null;
       let bestD2 = pxThreshold * pxThreshold;
-      for (const a of agentsInView) {
+      for (const a of candidates) {
         const pos = interpolateAgentPosition(a, animationFrame, meta.simulation.tickMs);
         const { wx, wy } = wrapWorldCoord(pos.x + 0.5, pos.y + 0.5, camera.cx, camera.cy, meta.width, meta.height);
         const osx = (wx - worldLeft) * ppc;
@@ -408,31 +408,14 @@ export default function MapCanvas({
       }
       return best;
     },
-    [agentsInView, meta.width, meta.height, meta.simulation.tickMs, camera, size.w, size.h, animationFrame],
+    [agentsInView, selectedAgent, meta.width, meta.height, meta.simulation.tickMs, camera, size.w, size.h, animationFrame],
   );
 
   // ---- Input handlers ----
-  const dragRef = useRef<{ active: boolean; startX: number; startY: number; camCx: number; camCy: number } | null>(null);
+  const pointersRef = useRef(new Map<number, { x: number; y: number }>());
+  const gestureRef = useRef<{ startX: number; startY: number; camera: Camera; moved: boolean; pinched: boolean; distance: number; anchorX: number; anchorY: number } | null>(null);
 
-  const onMouseDown = (e: React.MouseEvent) => {
-    dragRef.current = { active: true, startX: e.clientX, startY: e.clientY, camCx: camera.cx, camCy: camera.cy };
-  };
-  const onMouseUp = () => {
-    if (dragRef.current) dragRef.current.active = false;
-    dragRef.current = null;
-  };
-  const onMouseMove = (e: React.MouseEvent) => {
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const sx = e.clientX - rect.left;
-    const sy = e.clientY - rect.top;
-    const dragState = dragRef.current;
-    if (dragState?.active) {
-      const dx = e.clientX - dragState.startX;
-      const dy = e.clientY - dragState.startY;
-      setCamera((c) => ({ ...c, cx: dragState.camCx - dx / c.ppc, cy: dragState.camCy - dy / c.ppc }));
-      return;
-    }
-
+  const showHover = (sx: number, sy: number, clientX: number, clientY: number) => {
     const { x, y } = screenToWorld(sx, sy);
     const worldInfo = sampleWorld(x, y);
     const hovAgent = pickAgent(sx, sy);
@@ -455,12 +438,67 @@ export default function MapCanvas({
       if (worldInfo.moveCost != null) content += `\nMove cost: ${worldInfo.moveCost.toFixed(2)}`;
     }
 
-    setTooltip({ x: e.clientX, y: e.clientY, content });
+    setTooltip({ x: clientX, y: clientY, content });
   };
-  const onMouseLeave = () => {
+  const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     setTooltip(null);
-    if (dragRef.current) dragRef.current.active = false;
-    dragRef.current = null;
+    if (pointersRef.current.size === 1) {
+      gestureRef.current = { startX: e.clientX, startY: e.clientY, camera, moved: false, pinched: false, distance: 0, anchorX: 0, anchorY: 0 };
+    } else if (pointersRef.current.size === 2 && gestureRef.current) {
+      const [a, b] = [...pointersRef.current.values()];
+      const rect = e.currentTarget.getBoundingClientRect();
+      const mx = (a.x + b.x) / 2 - rect.left;
+      const my = (a.y + b.y) / 2 - rect.top;
+      gestureRef.current = { ...gestureRef.current, camera, pinched: true, distance: Math.hypot(a.x - b.x, a.y - b.y), anchorX: camera.cx + (mx - size.w / 2) / camera.ppc, anchorY: camera.cy + (my - size.h / 2) / camera.ppc };
+    }
+  };
+  const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const point = { x: e.clientX, y: e.clientY };
+    if (!pointersRef.current.has(e.pointerId)) {
+      if (e.pointerType === 'mouse') showHover(point.x - rect.left, point.y - rect.top, point.x, point.y);
+      return;
+    }
+    pointersRef.current.set(e.pointerId, point);
+    const gesture = gestureRef.current;
+    if (!gesture) return;
+    if (pointersRef.current.size >= 2) {
+      const [a, b] = [...pointersRef.current.values()];
+      if (!gesture.distance) return;
+      const zoom = Math.max(ppcMinOut, Math.min(ppcMaxIn, gesture.camera.ppc * Math.hypot(a.x - b.x, a.y - b.y) / gesture.distance));
+      const mx = (a.x + b.x) / 2 - rect.left;
+      const my = (a.y + b.y) / 2 - rect.top;
+      setCamera({ cx: gesture.anchorX - (mx - size.w / 2) / zoom, cy: gesture.anchorY - (my - size.h / 2) / zoom, ppc: zoom });
+    } else if (!gesture.pinched) {
+      const dx = point.x - gesture.startX;
+      const dy = point.y - gesture.startY;
+      if (Math.hypot(dx, dy) > 6 && !gesture.moved) { gesture.moved = true; onManualPan?.(); }
+      if (gesture.moved) setCamera({ ...gesture.camera, cx: gesture.camera.cx - dx / gesture.camera.ppc, cy: gesture.camera.cy - dy / gesture.camera.ppc });
+    }
+  };
+  const onPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const gesture = gestureRef.current;
+    pointersRef.current.delete(e.pointerId);
+    if (pointersRef.current.size > 0) return;
+    gestureRef.current = null;
+    if (!gesture || gesture.moved || gesture.pinched) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const sx = e.clientX - rect.left;
+    const sy = e.clientY - rect.top;
+    const agent = pickAgent(sx, sy, e.pointerType === 'touch' ? 20 : 12);
+    if (agent) { onSelectAgent?.(agent); onSelectObject?.(null); return; }
+    const object = pickObject(sx, sy, e.pointerType === 'touch' ? 18 : 10);
+    if (object) { onSelectObject?.(object); onSelectAgent?.(null); return; }
+    onSelectObject?.(null);
+    onSelectAgent?.(null);
+    const { x, y } = screenToWorld(sx, sy);
+    onSelect?.(sampleWorld(x, y));
+  };
+  const onPointerCancel = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    pointersRef.current.delete(e.pointerId);
+    if (pointersRef.current.size === 0) gestureRef.current = null;
   };
   const onWheel = (e: React.WheelEvent) => {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -476,28 +514,6 @@ export default function MapCanvas({
     const nextCx = worldBefore.x - (sx / nextPpc - halfWx);
     const nextCy = worldBefore.y - (sy / nextPpc - halfHy);
     setCamera({ cx: nextCx, cy: nextCy, ppc: nextPpc });
-  };
-  const onClick = (e: React.MouseEvent) => {
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const sx = e.clientX - rect.left;
-    const sy = e.clientY - rect.top;
-    const hitAgent = pickAgent(sx, sy);
-    if (hitAgent) {
-      onSelectAgent?.(hitAgent);
-      onSelectObject?.(null);
-      return;
-    }
-    const hitObj = pickObject(sx, sy);
-    if (hitObj) {
-      onSelectObject?.(hitObj);
-      onSelectAgent?.(null);
-      return;
-    }
-    onSelectObject?.(null);
-    onSelectAgent?.(null);
-    const { x, y } = screenToWorld(sx, sy);
-    const info = sampleWorld(x, y);
-    onSelect?.(info);
   };
   const onContextMenu = (e: React.MouseEvent) => e.preventDefault();
 
@@ -536,15 +552,19 @@ export default function MapCanvas({
     <div ref={wrapperRef} className="relative w-full h-full overflow-hidden">
       <canvas
         ref={canvasRef}
-        onMouseDown={onMouseDown}
-        onMouseUp={onMouseUp}
-        onMouseMove={onMouseMove}
-        onMouseLeave={onMouseLeave}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerCancel}
+        onPointerLeave={() => setTooltip(null)}
         onWheel={onWheel}
-        onClick={onClick}
         onContextMenu={onContextMenu}
-        className="block w-full h-full cursor-crosshair select-none"
+        className="block w-full h-full cursor-crosshair select-none touch-none"
       />
+      <div className="absolute right-3 z-10 flex flex-col gap-2" style={{ top: 'calc(env(safe-area-inset-top) + 12px)' }}>
+        <button type="button" aria-label="Zoom in" onClick={() => setCamera(c => ({ ...c, ppc: Math.min(ppcMaxIn, c.ppc * 1.5) }))} className="h-11 w-11 rounded-xl border border-white/25 bg-gray-900/95 text-2xl text-white shadow-lg">+</button>
+        <button type="button" aria-label="Zoom out" onClick={() => setCamera(c => ({ ...c, ppc: Math.max(ppcMinOut, c.ppc / 1.5) }))} className="h-11 w-11 rounded-xl border border-white/25 bg-gray-900/95 text-2xl text-white shadow-lg">−</button>
+      </div>
       <MapStatusBar
         screenW={size.w}
         screenH={size.h}

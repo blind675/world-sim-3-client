@@ -327,12 +327,12 @@ export default function TutorialModal({ isOpen, onClose }: TutorialModalProps) {
   const currentPageData = pages[currentPage];
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 rounded-xl border border-gray-700 max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-2 sm:p-4" style={{ paddingTop: 'max(8px, env(safe-area-inset-top))', paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}>
+      <div className="bg-gray-900 rounded-xl border border-gray-700 max-w-4xl w-full min-w-0 max-h-full overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="bg-gray-800 px-6 py-4 border-b border-gray-700">
+        <div className="bg-gray-800 px-3 py-3 sm:px-6 sm:py-4 border-b border-gray-700">
           <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-bold text-white">{currentPageData.title}</h2>
+            <h2 className="text-lg sm:text-2xl font-bold text-white">{currentPageData.title}</h2>
             {showSkip && (
               <button
                 onClick={handleClose}
@@ -355,12 +355,12 @@ export default function TutorialModal({ isOpen, onClose }: TutorialModalProps) {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-6 break-words">
           {currentPageData.content}
         </div>
 
         {/* Navigation */}
-        <div className="bg-gray-800 px-6 py-4 border-t border-gray-700">
+        <div className="bg-gray-800 px-3 py-3 sm:px-6 sm:py-4 border-t border-gray-700">
           <div className="flex justify-between items-center">
             <button
               onClick={handlePrevious}

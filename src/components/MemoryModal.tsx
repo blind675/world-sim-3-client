@@ -42,8 +42,8 @@ export function MemoryModal({ isOpen, onClose, memory, currentTick, agentId }: M
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 rounded-lg max-w-4xl w-full max-h-[80vh] flex flex-col">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4" style={{ paddingTop: 'max(8px, env(safe-area-inset-top))', paddingBottom: 'max(8px, env(safe-area-inset-bottom))' }}>
+      <div className="bg-gray-900 rounded-lg max-w-4xl w-full min-w-0 max-h-full flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-700">
           <div>
@@ -52,7 +52,7 @@ export function MemoryModal({ isOpen, onClose, memory, currentTick, agentId }: M
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
+            className="min-h-11 min-w-11 text-gray-400 hover:text-white transition-colors"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -62,7 +62,7 @@ export function MemoryModal({ isOpen, onClose, memory, currentTick, agentId }: M
 
         {/* Statistics */}
         <div className="p-4 border-b border-gray-700">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 text-sm">
             <div>
               <div className="text-gray-400">Total Entries</div>
               <div className="text-white font-medium">{memory.length}</div>
@@ -111,7 +111,7 @@ export function MemoryModal({ isOpen, onClose, memory, currentTick, agentId }: M
                 return (
                   <div
                     key={m.id}
-                    className="flex items-center justify-between p-2 rounded bg-gray-800/50 hover:bg-gray-800 transition-colors"
+                    className="flex flex-wrap items-center justify-between gap-2 p-2 rounded bg-gray-800/50 hover:bg-gray-800 transition-colors break-all"
                   >
                     <div className="flex items-center gap-2">
                       <span

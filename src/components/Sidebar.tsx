@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type {
   AgentDetail,
   AgentInViewEntity,
@@ -18,6 +18,8 @@ interface Props {
   selected: HoverInfo | null;
   selectedObject: WorldObject | null;
   selectedAgent: AgentDetail | null;
+  following: boolean;
+  onToggleFollow: () => void;
   backendOk: boolean;
   showChunkGrid: boolean;
   onToggleChunkGrid: (v: boolean) => void;
@@ -34,7 +36,7 @@ interface Props {
 
 function row(label: string, value: React.ReactNode) {
   return (
-    <div className="flex justify-between gap-4 text-xs py-0.5">
+    <div className="flex justify-between gap-4 text-sm py-0.5 md:text-xs">
       <span className="text-gray-400">{label}</span>
       <span className="text-gray-100 tabular-nums">{value}</span>
     </div>
@@ -262,6 +264,8 @@ export default function Sidebar({
   selected,
   selectedObject,
   selectedAgent,
+  following,
+  onToggleFollow,
   backendOk,
   showChunkGrid,
   onToggleChunkGrid,
@@ -275,8 +279,15 @@ export default function Sidebar({
   onShowTutorial,
   onShowStatistics,
 }: Props) {
+  const selectedRef = useRef<HTMLElement | null>(null);
+  const selectedId = selectedAgent?.id;
+  useEffect(() => {
+    if (selectedId && window.matchMedia('(max-width: 767px)').matches) {
+      selectedRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    }
+  }, [selectedId]);
   return (
-    <aside className="w-72 shrink-0 bg-panel border-l border-white/5 p-4 flex flex-col gap-4 overflow-y-auto">
+    <aside className="h-full w-full min-w-0 bg-panel p-4 flex flex-col gap-4 overflow-y-auto overscroll-contain md:border-l md:border-white/5" style={{ touchAction: 'pan-y' }}>
       <div>
         <div className="flex items-center gap-2">
           <span className={`inline-block w-2 h-2 rounded-full ${backendOk ? 'bg-emerald-400' : 'bg-red-400'}`} />
@@ -294,7 +305,7 @@ export default function Sidebar({
             <div className="mt-2 pt-2 border-t border-white/5">
               <button
                 onClick={onShowStatistics}
-                className="w-full px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
+                className="w-full min-h-11 px-2 py-1 bg-blue-600 text-white text-sm md:text-xs rounded hover:bg-blue-700 transition-colors"
               >
                 📊 World Statistics
               </button>
@@ -312,7 +323,7 @@ export default function Sidebar({
             <button
               key={l}
               onClick={() => onLayer(l)}
-              className={`text-xs px-2 py-1 rounded border transition ${layer === l
+              className={`min-h-11 text-xs px-1 py-1 rounded border transition ${layer === l
                 ? 'bg-accent/20 border-accent text-accent'
                 : 'bg-black/20 border-white/10 text-gray-300 hover:bg-white/5'
                 }`}
@@ -325,7 +336,7 @@ export default function Sidebar({
 
       <section className="bg-panelSoft rounded p-3 flex flex-col gap-2">
         <h2 className="text-xs uppercase text-gray-400">Overlays</h2>
-        <label className="flex items-center gap-2 text-xs cursor-pointer">
+        <label className="flex min-h-11 items-center gap-2 text-sm md:text-xs cursor-pointer">
           <input
             type="checkbox"
             checked={showObjects}
@@ -374,7 +385,7 @@ export default function Sidebar({
             </div>
           </div>
         ) : null}
-        <label className="flex items-center gap-2 text-xs cursor-pointer">
+        <label className="flex min-h-11 items-center gap-2 text-sm md:text-xs cursor-pointer">
           <input
             type="checkbox"
             checked={showVision}
@@ -389,7 +400,7 @@ export default function Sidebar({
           </span>
         </label>
         {showVision ? (
-          <label className="flex items-center gap-2 text-xs cursor-pointer pl-6">
+          <label className="flex min-h-11 items-center gap-2 text-sm md:text-xs cursor-pointer pl-6">
             <input
               type="checkbox"
               checked={showClusterExtents}
@@ -404,7 +415,7 @@ export default function Sidebar({
             </span>
           </label>
         ) : null}
-        <label className="flex items-center gap-2 text-xs cursor-pointer">
+        <label className="flex min-h-11 items-center gap-2 text-sm md:text-xs cursor-pointer">
           <input
             type="checkbox"
             checked={showChunkGrid}
@@ -426,11 +437,12 @@ export default function Sidebar({
         </div>
       </section>
 
-      <section className="bg-panelSoft rounded p-3">
+      <section ref={selectedRef} className="bg-panelSoft rounded p-3">
         <h2 className="text-xs uppercase text-gray-400 mb-2">Selected</h2>
         {selectedAgent ? (
           <>
             <div className="text-xs font-medium text-emerald-400 mb-2">Agent</div>
+            <button onClick={onToggleFollow} aria-pressed={following} className={`mb-3 min-h-11 w-full rounded-lg border px-3 text-sm font-semibold ${following ? 'border-amber-300 bg-amber-500/20 text-amber-200' : 'border-white/20 bg-gray-800 text-white'}`}>{following ? 'Following agent · On' : 'Follow agent · Off'}</button>
             {row('id', selectedAgent.id)}
             {row('x, y', `${selectedAgent.x}, ${selectedAgent.y}`)}
             {row('facing', `${((selectedAgent.facing * 180) / Math.PI).toFixed(0)}°`)}
@@ -472,22 +484,22 @@ export default function Sidebar({
             {row('move cost', selected.moveCost != null ? selected.moveCost.toFixed(2) : '∞')}
           </>
         ) : (
-          <p className="text-xs text-gray-500">click an agent, object, or tile to select it</p>
+          <p className="text-sm text-gray-400 md:text-xs">Tap an agent, object, or tile to inspect it.</p>
         )}
       </section>
 
       <section className="bg-panelSoft rounded p-3 text-xs text-gray-400 leading-relaxed">
         <h2 className="text-xs uppercase text-gray-400 mb-2">Controls</h2>
-        <p><b>Drag</b> — pan</p>
-        <p><b>Wheel</b> — zoom</p>
-        <p><b>Click</b> — select agent / object / pin tile</p>
-        <p><b>Right-click</b> or <b>Shift+click</b> — command selected agent to path here</p>
+        <p><b>Drag or swipe</b> — pan</p>
+        <p><b>Wheel, pinch, or + / −</b> — zoom</p>
+        <p><b>Click or tap</b> — inspect an agent, object, or tile</p>
+        <p><b>Find agent</b> — jump to a living agent</p>
         <p className="mt-2 text-gray-500">World wraps seamlessly on both axes.</p>
 
         <div className="mt-3 pt-3 border-t border-white/5">
           <button
             onClick={onShowTutorial}
-            className="w-full px-3 py-2 bg-blue-600/20 border border-blue-500/30 text-blue-400 rounded hover:bg-blue-600/30 hover:border-blue-500/50 transition-colors text-xs font-medium"
+            className="w-full min-h-11 px-3 py-2 bg-blue-600/20 border border-blue-500/30 text-blue-400 rounded hover:bg-blue-600/30 hover:border-blue-500/50 transition-colors text-sm md:text-xs font-medium"
           >
             📖 Show Tutorial
           </button>

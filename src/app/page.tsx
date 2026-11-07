@@ -5,7 +5,7 @@ import MapCanvas, { HoverInfo } from '@/components/MapCanvas';
 import Sidebar from '@/components/Sidebar';
 import TutorialModal from '@/components/TutorialModal';
 import StatisticsModal from '@/components/StatisticsModal';
-import { fetchAgent, fetchMeta, postAgentPath, postSimStep, fetchTickCount } from '@/lib/api';
+import { fetchAgent, fetchMeta, fetchTickCount } from '@/lib/api';
 import type {
   AgentDetail,
   AgentInViewEntity,

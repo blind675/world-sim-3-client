@@ -23,7 +23,7 @@ export interface ChunkEntry {
 
 const ALL_LAYERS: LayerName[] = ['height', 'groundType', 'waterDepth', 'moveCost'];
 const PREFETCH_PADDING = 2;
-const BATCH_SIZE = 32;
+const BATCH_SIZE = 8;
 
 interface UseChunkCacheOptions {
   meta: WorldMeta;

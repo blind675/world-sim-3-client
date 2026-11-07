@@ -38,7 +38,7 @@ export default function TutorialModal({ isOpen, onClose }: TutorialModalProps) {
             FlatWorld is a living simulation where autonomous agents navigate, survive, and interact in a procedurally generated world.
           </p>
           <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-            <h3 className="text-white font-semibold mb-2">What you'll see:</h3>
+            <h3 className="text-white font-semibold mb-2">What you&apos;ll see:</h3>
             <ul className="space-y-2 text-gray-300">
               <li className="flex items-center gap-2">
                 <span className="w-2 h-2 bg-blue-400 rounded-full"></span>
@@ -59,7 +59,7 @@ export default function TutorialModal({ isOpen, onClose }: TutorialModalProps) {
             </ul>
           </div>
           <p className="text-sm text-gray-400 italic">
-            Click "Next" to explore the world and its inhabitants...
+            Click &quot;Next&quot; to explore the world and its inhabitants...
           </p>
         </div>
       )
@@ -108,7 +108,7 @@ export default function TutorialModal({ isOpen, onClose }: TutorialModalProps) {
 
           <div className="bg-gray-900 rounded-lg p-3 border border-gray-700">
             <p className="text-xs text-gray-400">
-              💡 The world continues evolving even when you're not watching - resources deplete, regrow, and spread naturally!
+              💡 The world continues evolving even when you&apos;re not watching - resources deplete, regrow, and spread naturally!
             </p>
           </div>
         </div>
@@ -222,7 +222,7 @@ export default function TutorialModal({ isOpen, onClose }: TutorialModalProps) {
       content: (
         <div className="space-y-6">
           <p className="text-lg text-gray-300">
-            Agents perceive the world through vision and remember what they've seen.
+            Agents perceive the world through vision and remember what they&apos;ve seen.
           </p>
 
           <div className="grid grid-cols-2 gap-4">

@@ -22,3 +22,4 @@ npm run build
 ```
 
 The backend serves live simulation data. This repository renders and inspects it; see `src/lib/api.ts` for API calls. Mobile layout and PWA installation are future work.
+The public viewer does not send simulation control requests. Production controls require a server-side sign-in flow and must never embed a backend control token in `NEXT_PUBLIC_*` variables.

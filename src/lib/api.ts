@@ -6,8 +6,6 @@ import type {
   EntitiesInViewResponse,
   EntityType,
   LayerName,
-  PathResponse,
-  SimStepResponse,
   ViewportResponse,
   WorldMeta,
   WorldStatistics,
@@ -83,40 +81,6 @@ export function fetchCell(x: number, y: number, signal?: AbortSignal) {
 
 export function fetchAgent(id: string, signal?: AbortSignal) {
   return getJson<AgentDetail>(`/api/agents/${encodeURIComponent(id)}`, signal);
-}
-
-export async function postAgentPath(
-  id: string,
-  target: { x: number; y: number },
-  signal?: AbortSignal,
-): Promise<PathResponse> {
-  const res = await fetch(`${BASE}/api/agents/${encodeURIComponent(id)}/path`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(target),
-    signal,
-    cache: 'no-store',
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`POST /api/agents/${id}/path failed: ${res.status} ${text}`);
-  }
-  return res.json() as Promise<PathResponse>;
-}
-
-export async function postSimStep(steps: number, signal?: AbortSignal): Promise<SimStepResponse> {
-  const res = await fetch(`${BASE}/api/sim/step`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ steps }),
-    signal,
-    cache: 'no-store',
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`POST /api/sim/step failed: ${res.status} ${text}`);
-  }
-  return res.json() as Promise<SimStepResponse>;
 }
 
 export async function fetchAllAgents(signal?: AbortSignal): Promise<AgentInViewEntity[]> {

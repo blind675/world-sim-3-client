@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { fetchWorldStatistics } from '@/lib/api';
 import type { WorldStatistics } from '@/lib/types';
 import type { WorldMeta } from '@/lib/types';
 
@@ -19,11 +20,7 @@ export default function StatisticsModal({ isOpen, onClose, meta }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000'}/api/world/statistics`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch statistics: ${response.status}`);
-      }
-      const data = await response.json();
+      const data = await fetchWorldStatistics();
       setStatistics(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch statistics');

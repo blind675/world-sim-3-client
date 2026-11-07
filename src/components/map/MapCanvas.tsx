@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { fetchAllAgents } from '@/lib/api';
 import type { AgentDetail, AgentInViewEntity, WorldObject, WorldMeta } from '@/lib/types';
 import {
   Camera,
@@ -79,12 +80,11 @@ export default function MapCanvas({
   // Initialize camera to focus on first agent after meta loads
   useEffect(() => {
     if (meta.width > 0) {
-      fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000'}/api/agents`)
-        .then((res) => res.json())
-        .then((data) => {
-          console.log('Camera init: fetched agents:', data.agents?.length || 0);
-          if (data.agents && data.agents.length > 0) {
-            const firstAgent = data.agents[0];
+      fetchAllAgents()
+        .then((agents) => {
+          console.log('Camera init: fetched agents:', agents.length);
+          if (agents.length > 0) {
+            const firstAgent = agents[0];
             console.log('Camera init: positioning to agent', firstAgent.id, 'at', firstAgent.x, firstAgent.y);
             setCamera((prev) => ({ ...prev, cx: firstAgent.x, cy: firstAgent.y }));
           }

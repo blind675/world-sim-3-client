@@ -11,10 +11,15 @@ import type {
   WorldStatistics,
 } from './types';
 
-const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
+// Netlify users sometimes enter a hostname without a scheme. Fetch would
+// otherwise treat it as a path on the frontend's own origin.
+const configuredBackendUrl = process.env.NEXT_PUBLIC_BACKEND_URL?.trim() || 'http://localhost:4000';
+export const BACKEND_URL = (/^https?:\/\//i.test(configuredBackendUrl)
+  ? configuredBackendUrl
+  : `https://${configuredBackendUrl}`).replace(/\/+$/, '');
 
 async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, { signal, cache: 'no-store' });
+  const res = await fetch(`${BACKEND_URL}${path}`, { signal, cache: 'no-store' });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     throw new Error(`GET ${path} failed: ${res.status} ${text}`);
@@ -46,7 +51,7 @@ export async function fetchChunks(
   layers: LayerName[],
   signal?: AbortSignal,
 ): Promise<ChunksResponse> {
-  const res = await fetch(`${BASE}/api/world/chunks`, {
+  const res = await fetch(`${BACKEND_URL}/api/world/chunks`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ chunks, layers }),
@@ -84,7 +89,7 @@ export function fetchAgent(id: string, signal?: AbortSignal) {
 }
 
 export async function fetchAllAgents(signal?: AbortSignal): Promise<AgentInViewEntity[]> {
-  const res = await fetch(`${BASE}/api/agents`, {
+  const res = await fetch(`${BACKEND_URL}/api/agents`, {
     method: 'GET',
     signal,
     cache: 'no-store',
@@ -116,7 +121,7 @@ export async function fetchTickCount(
     }
   }
 
-  const res = await fetch(`${BASE}/api/simulation/status`, {
+  const res = await fetch(`${BACKEND_URL}/api/simulation/status`, {
     method: 'GET',
     signal,
     cache: 'no-store',

@@ -5,7 +5,7 @@ import MapCanvas, { HoverInfo } from '@/components/MapCanvas';
 import Sidebar from '@/components/Sidebar';
 import TutorialModal from '@/components/TutorialModal';
 import StatisticsModal from '@/components/StatisticsModal';
-import { fetchAgent, fetchMeta, fetchTickCount } from '@/lib/api';
+import { BACKEND_URL, fetchAgent, fetchMeta, fetchTickCount } from '@/lib/api';
 import type {
   AgentDetail,
   AgentInViewEntity,
@@ -115,7 +115,7 @@ export default function HomePage() {
               <div className="max-w-md text-center">
                 <p className="text-red-400 mb-2">Backend not reachable</p>
                 <p className="text-xs">{error}</p>
-                <p className="text-xs mt-2">Make sure the backend is running on <code>http://localhost:4000</code>.</p>
+                <p className="text-xs mt-2">Make sure the backend is running on <code>{BACKEND_URL}</code>.</p>
               </div>
             ) : (
               <p>loading world…</p>

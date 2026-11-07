@@ -14,6 +14,8 @@ npm run dev
 
 Open `http://localhost:3000`. The default backend URL is `http://localhost:4000`; set `NEXT_PUBLIC_BACKEND_URL` for another API origin. The deployed backend must allow the web app's origin through `CORS_ORIGIN`.
 
+For Netlify, set `NEXT_PUBLIC_BACKEND_URL` to the backend's HTTPS URL (for example, `https://world-sim-3-server-production.up.railway.app`) and rebuild the site. A bare hostname is also accepted; the client adds `https://` automatically.
+
 ## Checks
 
 ```bash

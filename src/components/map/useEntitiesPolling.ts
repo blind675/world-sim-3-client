@@ -73,7 +73,7 @@ export function useEntitiesPolling({
           const objs: WorldObject[] = [];
           const ags: AgentInViewEntity[] = [];
           for (const e of resp.objects) {
-            if (e.type === 'agent') ags.push(e);
+            if (e.type === 'agent') ags.push({ ...e, timelineTickAt: resp.timelineTickAt });
             else objs.push(e);
           }
           lastFetchedViewportKey.current = viewportKey;
@@ -111,14 +111,16 @@ export function useEntitiesPolling({
           h: (cyMax - cyMin + 1) * cs,
           types: ['agent'],
         }, ac.signal);
-        setAgentsInView(response.objects.filter((entity): entity is AgentInViewEntity => entity.type === 'agent'));
+        setAgentsInView(response.objects
+          .filter((entity): entity is AgentInViewEntity => entity.type === 'agent')
+          .map(agent => ({ ...agent, timelineTickAt: response.timelineTickAt })));
       } catch {
         // Keep the last known agent positions during a transient request failure.
       } finally {
         inFlight = false;
       }
     };
-    const pollInterval = setInterval(poll, tickMs);
+    const pollInterval = setInterval(poll, Math.max(2000, Math.min(5000, tickMs)));
 
     return () => { clearInterval(pollInterval); ac.abort(); };
   }, [visibleChunks, cs, tickMs]);

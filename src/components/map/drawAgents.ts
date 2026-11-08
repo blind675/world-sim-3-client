@@ -39,7 +39,7 @@ export function drawAgents({
   const agentR = Math.max(3, Math.min(12, ppc * 1.5));
 
   for (const a of agents) {
-    const interpolatedPos = interpolateAgentPosition(a, animationFrame, tickMs);
+    const interpolatedPos = interpolateAgentPosition(a, animationFrame, tickMs, worldW, worldH);
     let wx = interpolatedPos.x + 0.5;
     let wy = interpolatedPos.y + 0.5;
     const dxw = wx - cameraCx;

@@ -48,7 +48,6 @@ interface Props {
   onSelect?: (info: HoverInfo) => void;
   onSelectObject?: (obj: WorldObject | null) => void;
   onSelectAgent?: (a: AgentInViewEntity | null) => void;
-  onChunksReady?: (chunksReadyChecker: () => boolean) => void;
 }
 
 export default function MapCanvas({
@@ -70,7 +69,6 @@ export default function MapCanvas({
   onSelect,
   onSelectObject,
   onSelectAgent,
-  onChunksReady,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -121,7 +119,7 @@ export default function MapCanvas({
     paintChunkCanvas,
     readyCount,
     loadingCount,
-  } = useChunkCache({ meta, camera, size, onChunksReady });
+  } = useChunkCache({ meta, camera, size });
 
   // ---- Entities polling hook ----
   const { objectsInView, agentsInView, setAgentsInView } = useEntitiesPolling({
@@ -136,6 +134,33 @@ export default function MapCanvas({
     chunksRef,
   });
 
+  // Detail requests can be fresher than the viewport poll, particularly just
+  // after a Find agent jump. Use the same timed path for every map overlay.
+  const renderAgents = useMemo(() => {
+    if (!selectedAgent) return agentsInView;
+    const live = agentsInView.find(agent => agent.id === selectedAgent.id);
+    if (live && live.currentTick >= selectedAgent.currentTick) return agentsInView;
+    const detailAgent: AgentInViewEntity = {
+      id: selectedAgent.id,
+      type: 'agent',
+      x: selectedAgent.x,
+      y: selectedAgent.y,
+      facing: selectedAgent.facing,
+      state: selectedAgent.state,
+      currentGoal: selectedAgent.currentGoal,
+      currentAction: selectedAgent.currentAction ?? undefined,
+      movementStartPos: selectedAgent.movementStartPos,
+      targetPos: selectedAgent.targetPos,
+      movementStartTick: selectedAgent.movementStartTick,
+      currentTick: selectedAgent.currentTick,
+      isMoving: selectedAgent.isMoving,
+      moveSpeed: selectedAgent.traits.moveSpeed,
+      path: selectedAgent.path,
+      timelineTickAt: selectedAgent.timelineTickAt,
+    };
+    return [...agentsInView.filter(agent => agent.id !== selectedAgent.id), detailAgent];
+  }, [agentsInView, selectedAgent]);
+
   const [tooltip, setTooltip] = useState<{ x: number; y: number; content: string } | null>(null);
   const [animationFrame, setAnimationFrame] = useState(0);
 
@@ -149,9 +174,12 @@ export default function MapCanvas({
   useEffect(() => {
     if (!following || !selectedAgent) return;
     const followAgent = () => {
+      const live = renderAgents.find(agent => agent.id === selectedAgent.id);
+      if (!live) return;
+      const position = interpolateAgentPosition(live, performance.now(), meta.simulation.tickMs, meta.width, meta.height);
       setCamera((prevCamera) => {
-        const dx = ((selectedAgent.x + 0.5 - prevCamera.cx + meta.width * 1.5) % meta.width) - meta.width / 2;
-        const dy = ((selectedAgent.y + 0.5 - prevCamera.cy + meta.height * 1.5) % meta.height) - meta.height / 2;
+        const dx = ((position.x + 0.5 - prevCamera.cx + meta.width * 1.5) % meta.width) - meta.width / 2;
+        const dy = ((position.y + 0.5 - prevCamera.cy + meta.height * 1.5) % meta.height) - meta.height / 2;
         const newCx = prevCamera.cx + dx * 0.2;
         const newCy = prevCamera.cy + dy * 0.2;
         const threshold = 0.01;
@@ -166,7 +194,7 @@ export default function MapCanvas({
     };
     const intervalId = setInterval(followAgent, 50);
     return () => clearInterval(intervalId);
-  }, [selectedAgent, following, meta.width, meta.height]);
+  }, [selectedAgent, renderAgents, following, meta.width, meta.height, meta.simulation.tickMs]);
 
   // ---- Continuous animation loop ----
   useEffect(() => {
@@ -247,13 +275,13 @@ export default function MapCanvas({
     }
 
     // Path overlay (below agents) — prefer live path from polling over stale prop
-    const liveSelectedAgent = agentsInView.find((a) => a.id === selectedAgentId);
+    const liveSelectedAgent = renderAgents.find((a) => a.id === selectedAgentId);
     const livePath = liveSelectedAgent?.path ?? selectedAgentPath ?? null;
     drawPathOverlay({
       ctx,
       selectedAgentId: selectedAgentId ?? null,
       selectedAgentPath: livePath,
-      agentsInView,
+      agentsInView: renderAgents,
       animationFrame,
       tickMs: meta.simulation.tickMs,
       ...sharedDrawProps,
@@ -264,7 +292,7 @@ export default function MapCanvas({
       drawVisionOverlay({
         ctx,
         selectedAgent,
-        agentsInView,
+        agentsInView: renderAgents,
         meta,
         showClusterExtents,
         animationFrame,
@@ -274,12 +302,9 @@ export default function MapCanvas({
     }
 
     // Agents
-    const drawList = selectedAgent && !agentsInView.some(agent => agent.id === selectedAgent.id)
-      ? [...agentsInView, { id: selectedAgent.id, type: 'agent' as const, x: selectedAgent.x, y: selectedAgent.y, facing: selectedAgent.facing, state: selectedAgent.state, currentTick: 0, moveSpeed: selectedAgent.traits.moveSpeed, isMoving: false }]
-      : agentsInView;
     drawAgents({
       ctx,
-      agents: drawList,
+      agents: renderAgents,
       selectedAgentId: selectedAgentId ?? null,
       animationFrame,
       tickMs: meta.simulation.tickMs,
@@ -332,7 +357,7 @@ export default function MapCanvas({
   }, [
     meta, size, cs, camera, layer, visibleChunks, chunksW, chunksH,
     showChunkGrid, showObjects, showVision, showClusterExtents,
-    objectsInView, selectedObject, agentsInView, selectedAgentId,
+    objectsInView, selectedObject, renderAgents, selectedAgentId,
     selectedAgentPath, selectedAgent, animationFrame, selected,
     paintChunkCanvas, chunksRef,
   ]);
@@ -389,9 +414,7 @@ export default function MapCanvas({
 
   const pickAgent = useCallback(
     (sx: number, sy: number, pxThreshold = 12): AgentInViewEntity | null => {
-      const candidates = selectedAgent && !agentsInView.some(agent => agent.id === selectedAgent.id)
-        ? [...agentsInView, { id: selectedAgent.id, type: 'agent' as const, x: selectedAgent.x, y: selectedAgent.y, facing: selectedAgent.facing, state: selectedAgent.state, currentTick: 0, moveSpeed: selectedAgent.traits.moveSpeed, isMoving: false }]
-        : agentsInView;
+      const candidates = renderAgents;
       if (candidates.length === 0) return null;
       const ppc = camera.ppc;
       const worldLeft = camera.cx - size.w / (2 * ppc);
@@ -399,7 +422,7 @@ export default function MapCanvas({
       let best: AgentInViewEntity | null = null;
       let bestD2 = pxThreshold * pxThreshold;
       for (const a of candidates) {
-        const pos = interpolateAgentPosition(a, animationFrame, meta.simulation.tickMs);
+        const pos = interpolateAgentPosition(a, animationFrame, meta.simulation.tickMs, meta.width, meta.height);
         const { wx, wy } = wrapWorldCoord(pos.x + 0.5, pos.y + 0.5, camera.cx, camera.cy, meta.width, meta.height);
         const osx = (wx - worldLeft) * ppc;
         const osy = (wy - worldTop) * ppc;
@@ -408,7 +431,7 @@ export default function MapCanvas({
       }
       return best;
     },
-    [agentsInView, selectedAgent, meta.width, meta.height, meta.simulation.tickMs, camera, size.w, size.h, animationFrame],
+    [renderAgents, meta.width, meta.height, meta.simulation.tickMs, camera, size.w, size.h, animationFrame],
   );
 
   // ---- Input handlers ----
@@ -423,7 +446,7 @@ export default function MapCanvas({
 
     let content = '';
     if (hovAgent) {
-      const pos = interpolateAgentPosition(hovAgent, animationFrame, meta.simulation.tickMs);
+      const pos = interpolateAgentPosition(hovAgent, animationFrame, meta.simulation.tickMs, meta.width, meta.height);
       const goalText = hovAgent.currentGoal
         ? `${hovAgent.currentGoal.type} (${hovAgent.currentGoal.targetX}, ${hovAgent.currentGoal.targetY})`
         : 'none';

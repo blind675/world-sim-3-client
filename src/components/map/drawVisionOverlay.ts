@@ -56,7 +56,7 @@ export function drawVisionOverlay({
   let ax: number;
   let ay: number;
   if (liveAgent) {
-    const pos = interpolateAgentPosition(liveAgent, animationFrame, tickMs);
+    const pos = interpolateAgentPosition(liveAgent, animationFrame, tickMs, worldW, worldH);
     ax = pos.x;
     ay = pos.y;
     facing = liveAgent.facing;

@@ -36,7 +36,7 @@ export function drawPathOverlay({
 
   const selAgent = agentsInView.find((a) => a.id === selectedAgentId);
   const interpolatedPos = selAgent
-    ? interpolateAgentPosition(selAgent, animationFrame, tickMs)
+    ? interpolateAgentPosition(selAgent, animationFrame, tickMs, worldW, worldH)
     : null;
   const startX = interpolatedPos ? interpolatedPos.x + 0.5 : null;
   const startY = interpolatedPos ? interpolatedPos.y + 0.5 : null;

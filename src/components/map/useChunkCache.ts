@@ -29,10 +29,9 @@ interface UseChunkCacheOptions {
   meta: WorldMeta;
   camera: Camera;
   size: { w: number; h: number };
-  onChunksReady?: (checker: () => boolean) => void;
 }
 
-export function useChunkCache({ meta, camera, size, onChunksReady }: UseChunkCacheOptions) {
+export function useChunkCache({ meta, camera, size }: UseChunkCacheOptions) {
   const cs = meta.chunkSize;
   const chunksW = Math.floor(meta.width / cs);
   const chunksH = Math.floor(meta.height / cs);
@@ -46,23 +45,6 @@ export function useChunkCache({ meta, camera, size, onChunksReady }: UseChunkCac
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [camera.cx, camera.cy, camera.ppc, size.w, size.h, cs],
   );
-
-  // ---- Expose chunks ready checker to parent ----
-  useEffect(() => {
-    if (!onChunksReady) return;
-    const checker = () => {
-      const { cxMin, cyMin, cxMax, cyMax } = visible;
-      const keys: string[] = [];
-      for (let cx = cxMin; cx <= cxMax; cx++) {
-        for (let cy = cyMin; cy <= cyMax; cy++) {
-          keys.push(chunkKey(wrapIndex(cx, chunksW), wrapIndex(cy, chunksH)));
-        }
-      }
-      const loaded = keys.filter((k) => chunksRef.current.get(k)?.status === 'ready').length;
-      return loaded >= Math.ceil(keys.length * 0.75);
-    };
-    onChunksReady(checker);
-  }, [onChunksReady, visible, chunksW, chunksH, cacheTick]);
 
   // ---- Fetch missing chunks ----
   useEffect(() => {

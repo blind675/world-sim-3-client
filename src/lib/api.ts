@@ -68,7 +68,7 @@ export async function fetchChunks(
 export function fetchEntitiesInView(
   params: { x: number; y: number; w: number; h: number; types?: EntityType[] },
   signal?: AbortSignal,
-) {
+): Promise<EntitiesInViewResponse> {
   const q = new URLSearchParams({
     x: String(params.x),
     y: String(params.y),
@@ -76,7 +76,20 @@ export function fetchEntitiesInView(
     h: String(params.h),
   });
   if (params.types && params.types.length > 0) q.set('types', params.types.join(','));
-  return getJson<EntitiesInViewResponse>(`/api/entities/in-view?${q.toString()}`, signal);
+  const requestedAt = performance.now();
+  return getJson<EntitiesInViewResponse>(`/api/entities/in-view?${q.toString()}`, signal)
+    .then(response => ({ ...response, timelineTickAt: estimateTickAt(response, requestedAt, performance.now()) }));
+}
+
+export function estimateTickAt(
+  timing: { serverTime?: number; lastTickAt?: number | null },
+  requestedAt: number,
+  receivedAt: number,
+): number | undefined {
+  if (timing.lastTickAt == null || timing.serverTime == null
+    || !Number.isFinite(timing.lastTickAt) || !Number.isFinite(timing.serverTime)) return undefined;
+  const transit = Math.max(0, receivedAt - requestedAt) / 2;
+  return receivedAt - (timing.serverTime - timing.lastTickAt) - transit;
 }
 
 export function fetchCell(x: number, y: number, signal?: AbortSignal) {
@@ -84,8 +97,10 @@ export function fetchCell(x: number, y: number, signal?: AbortSignal) {
   return getJson<CellResponse>(`/api/world/cell?${q.toString()}`, signal);
 }
 
-export function fetchAgent(id: string, signal?: AbortSignal) {
-  return getJson<AgentDetail>(`/api/agents/${encodeURIComponent(id)}`, signal);
+export async function fetchAgent(id: string, signal?: AbortSignal) {
+  const requestedAt = performance.now();
+  const agent = await getJson<AgentDetail>(`/api/agents/${encodeURIComponent(id)}`, signal);
+  return { ...agent, timelineTickAt: estimateTickAt(agent, requestedAt, performance.now()) };
 }
 
 export async function fetchAllAgents(signal?: AbortSignal): Promise<AgentInViewEntity[]> {
@@ -102,25 +117,7 @@ export async function fetchAllAgents(signal?: AbortSignal): Promise<AgentInViewE
   return data.agents || [];
 }
 
-export async function fetchTickCount(
-  signal?: AbortSignal,
-  chunksReadyChecker?: () => boolean
-): Promise<{ tickCount: number; tickMs: number; agentCount: number }> {
-  // If chunks ready checker is provided, wait until chunks are ready
-  if (chunksReadyChecker) {
-    const maxWaitTime = 10000; // Maximum wait time of 10 seconds
-    const startTime = Date.now();
-
-    while (!chunksReadyChecker()) {
-      if (Date.now() - startTime > maxWaitTime) {
-        // Timeout after maxWaitTime, proceed anyway
-        break;
-      }
-      // Wait 100ms before checking again
-      await new Promise(resolve => setTimeout(resolve, 100));
-    }
-  }
-
+export async function fetchTickCount(signal?: AbortSignal): Promise<{ tickCount: number; tickMs: number; agentCount: number }> {
   const res = await fetch(`${BACKEND_URL}/api/simulation/status`, {
     method: 'GET',
     signal,

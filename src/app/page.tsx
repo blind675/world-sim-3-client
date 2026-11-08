@@ -31,7 +31,6 @@ export default function HomePage() {
   const [tickMs, setTickMs] = useState(200);
   const [showTutorial, setShowTutorial] = useState(false);
   const [showStatistics, setShowStatistics] = useState(false);
-  const [chunksReadyChecker, setChunksReadyChecker] = useState<(() => boolean) | null>(null);
   const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
   const [finderOpen, setFinderOpen] = useState(false);
   const [following, setFollowing] = useState(false);
@@ -73,24 +72,30 @@ export default function HomePage() {
 
   // Fetch tick count at SIM_TICK_MS interval
   useEffect(() => {
+    let active = true;
+    let inFlight = false;
     const fetchTickInfo = async () => {
+      if (inFlight) return;
+      inFlight = true;
       try {
-        const tickInfo = await fetchTickCount(undefined, chunksReadyChecker || undefined);
-        setTickCount(tickInfo.tickCount);
-        setTickMs(tickInfo.tickMs);
+        const tickInfo = await fetchTickCount();
+        if (active) {
+          setTickCount(tickInfo.tickCount);
+          setTickMs(tickInfo.tickMs);
+        }
       } catch (error) {
         // Silently fail to avoid spamming console
-      }
+      } finally { inFlight = false; }
     };
 
     // Initial fetch
     fetchTickInfo();
 
     // Set up interval to fetch at SIM_TICK_MS rate
-    const intervalId = setInterval(fetchTickInfo, tickMs);
+    const intervalId = setInterval(fetchTickInfo, Math.max(2000, tickMs));
 
-    return () => clearInterval(intervalId);
-  }, [tickMs, chunksReadyChecker]);
+    return () => { active = false; clearInterval(intervalId); };
+  }, [tickMs]);
 
   const onSelectAgent = useCallback((a: AgentInViewEntity | null) => {
     setSelectedAgentId(a ? a.id : null);
@@ -137,7 +142,6 @@ export default function HomePage() {
             onSelect={(info) => { setSelectedObject(null); setSelectedAgentId(null); setFollowing(false); setSelected(info); setMobilePanelOpen(true); }}
             onSelectObject={(o) => { if (o) { setSelectedAgentId(null); setFollowing(false); setSelectedObject(o); setMobilePanelOpen(true); } }}
             onSelectAgent={onSelectAgent}
-            onChunksReady={setChunksReadyChecker}
           />
         ) : (
           <div className="h-full flex items-center justify-center text-sm text-gray-400">

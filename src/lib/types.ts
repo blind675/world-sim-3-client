@@ -121,18 +121,19 @@ export interface AgentInViewEntity {
   facing: number;
   state: string;
   dead?: boolean;
-  currentGoal?: AgentGoal;
+  currentGoal?: AgentGoal | null;
   currentAction?: string;
   // Movement data for interpolation
-  movementStartPos?: { x: number; y: number };
-  targetPos?: { x: number; y: number };
-  movementStartTick?: number;
+  movementStartPos?: { x: number; y: number } | null;
+  targetPos?: { x: number; y: number } | null;
+  movementStartTick?: number | null;
   currentTick: number;
   moveSpeed: number;
   isMoving: boolean;
   // Full path for frontend animation
   path?: { x: number; y: number }[];
   pathIndex?: number;
+  timelineTickAt?: number;
 }
 
 export type InViewEntity = WorldObject | AgentInViewEntity;
@@ -144,6 +145,9 @@ export interface EntitiesInViewResponse {
   h: number;
   objectCount: number;
   agentCount?: number;
+  serverTime?: number;
+  lastTickAt?: number | null;
+  timelineTickAt?: number;
   objects: InViewEntity[];
 }
 
@@ -211,6 +215,14 @@ export interface MemoryEntryCluster extends MemoryEntryBase {
 export type MemoryEntry = MemoryEntryEntity | MemoryEntryCluster;
 
 export interface AgentDetail extends AgentSummary {
+  currentTick: number;
+  isMoving: boolean;
+  movementStartPos: { x: number; y: number } | null;
+  targetPos: { x: number; y: number } | null;
+  movementStartTick: number | null;
+  serverTime?: number;
+  lastTickAt?: number | null;
+  timelineTickAt?: number;
   inventory: unknown[];
   memory: MemoryEntry[];
   path: { x: number; y: number }[];

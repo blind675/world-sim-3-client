@@ -5,6 +5,7 @@ import type {
   AgentDetail,
   AgentInViewEntity,
   MemoryEntry,
+  ObjectCatalog,
   WorldMeta,
   WorldObject,
 } from '@/lib/types';
@@ -13,6 +14,7 @@ import { MemoryModal } from './MemoryModal';
 
 interface Props {
   meta: WorldMeta | null;
+  objectCatalog: ObjectCatalog | null;
   layer: 'height' | 'groundType' | 'waterDepth';
   onLayer: (l: 'height' | 'groundType' | 'waterDepth') => void;
   selected: HoverInfo | null;
@@ -259,6 +261,7 @@ function MemoryPanel({ memory, currentTick, agentId }: { memory: MemoryEntry[]; 
 
 export default function Sidebar({
   meta,
+  objectCatalog,
   layer,
   onLayer,
   selected,
@@ -281,6 +284,7 @@ export default function Sidebar({
 }: Props) {
   const selectedRef = useRef<HTMLElement | null>(null);
   const selectedId = selectedAgent?.id;
+  const selectedDefinition = objectCatalog?.definitions.find(definition => definition.id === (selectedObject?.definitionId ?? selectedObject?.type));
   useEffect(() => {
     if (selectedId && window.matchMedia('(max-width: 767px)').matches) {
       selectedRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
@@ -469,8 +473,10 @@ export default function Sidebar({
           </>
         ) : selectedObject ? (
           <>
-            <div className="text-xs font-medium text-blue-400 mb-2">Object</div>
+            <div className="text-xs font-medium text-blue-400 mb-2">{selectedDefinition?.name ?? 'Object'}</div>
+            {selectedDefinition ? row('category', selectedDefinition.category) : null}
             {row('type', selectedObject.type)}
+            {selectedDefinition ? row('definition', selectedDefinition.id) : null}
             {row('id', selectedObject.id)}
             {row('x, y', `${selectedObject.x}, ${selectedObject.y}`)}
           </>
@@ -495,6 +501,7 @@ export default function Sidebar({
         <p><b>Click or tap</b> — inspect an agent, object, or tile</p>
         <p><b>Find agent</b> — jump to a living agent</p>
         <p className="mt-2 text-gray-500">World wraps seamlessly on both axes.</p>
+        <a href="/admin/objects" className="mt-3 flex min-h-11 items-center justify-center rounded border border-white/15 bg-gray-800 text-sm font-medium text-gray-100 md:text-xs">Object catalogue & draft editor</a>
 
         <div className="mt-3 pt-3 border-t border-white/5">
           <button

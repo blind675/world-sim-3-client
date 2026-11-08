@@ -1,6 +1,7 @@
 import type {
   AgentDetail,
   AgentInViewEntity,
+  ObjectCatalog,
   CellResponse,
   ChunksResponse,
   EntitiesInViewResponse,
@@ -29,6 +30,10 @@ async function getJson<T>(path: string, signal?: AbortSignal): Promise<T> {
 
 export function fetchMeta(signal?: AbortSignal) {
   return getJson<WorldMeta>('/api/world/meta', signal);
+}
+
+export function fetchObjectCatalog(signal?: AbortSignal) {
+  return getJson<ObjectCatalog>('/api/object-definitions', signal);
 }
 
 export function fetchViewport(

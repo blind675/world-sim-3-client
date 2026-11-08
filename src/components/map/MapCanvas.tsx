@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { AgentDetail, AgentInViewEntity, WorldObject, WorldMeta } from '@/lib/types';
+import type { AgentDetail, AgentInViewEntity, ObjectCatalog, ObjectDefinition, WorldObject, WorldMeta } from '@/lib/types';
 import {
   Camera,
   chunkKey,
@@ -31,6 +31,7 @@ export interface HoverInfo {
 
 interface Props {
   meta: WorldMeta;
+  objectCatalog?: ObjectCatalog | null;
   layer: LayerKey;
   showChunkGrid?: boolean;
   showObjects?: boolean;
@@ -52,6 +53,7 @@ interface Props {
 
 export default function MapCanvas({
   meta,
+  objectCatalog,
   layer,
   showChunkGrid,
   showObjects,
@@ -81,6 +83,10 @@ export default function MapCanvas({
   }));
 
   const cs = meta.chunkSize;
+  const objectDefinitions = useMemo<Record<string, ObjectDefinition>>(
+    () => Object.fromEntries(objectCatalog?.definitions.map(definition => [definition.id, definition]) ?? []),
+    [objectCatalog],
+  );
 
   // ---- Resize observer ----
   useEffect(() => {
@@ -271,7 +277,7 @@ export default function MapCanvas({
 
     // Static objects
     if (showObjects && objectsInView.length > 0) {
-      drawObjects({ ctx, objects: objectsInView, selectedObject: selectedObject ?? null, ...sharedDrawProps });
+      drawObjects({ ctx, objects: objectsInView, selectedObject: selectedObject ?? null, definitions: objectDefinitions, ...sharedDrawProps });
     }
 
     // Path overlay (below agents) — prefer live path from polling over stale prop
@@ -357,7 +363,7 @@ export default function MapCanvas({
   }, [
     meta, size, cs, camera, layer, visibleChunks, chunksW, chunksH,
     showChunkGrid, showObjects, showVision, showClusterExtents,
-    objectsInView, selectedObject, renderAgents, selectedAgentId,
+    objectsInView, selectedObject, objectDefinitions, renderAgents, selectedAgentId,
     selectedAgentPath, selectedAgent, animationFrame, selected,
     paintChunkCanvas, chunksRef,
   ]);

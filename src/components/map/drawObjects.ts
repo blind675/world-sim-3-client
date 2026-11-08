@@ -1,4 +1,4 @@
-import type { WorldObject } from '@/lib/types';
+import type { ObjectDefinition, WorldObject } from '@/lib/types';
 
 interface DrawObjectsOptions {
   ctx: CanvasRenderingContext2D;
@@ -13,9 +13,25 @@ interface DrawObjectsOptions {
   screenW: number;
   screenH: number;
   selectedObject: WorldObject | null | undefined;
+  definitions: Record<string, ObjectDefinition>;
 }
 
 const DETAIL_PPC = 3.5;
+const spriteCache = new Map<string, HTMLImageElement>();
+
+function drawSprite(ctx: CanvasRenderingContext2D, sprite: string | undefined, sx: number, sy: number, radius: number, ppc: number): boolean {
+  if (!sprite || ppc < DETAIL_PPC) return false;
+  let image = spriteCache.get(sprite);
+  if (!image) {
+    image = new Image();
+    image.src = `/objects/${sprite}.svg`;
+    spriteCache.set(sprite, image);
+  }
+  if (!image.complete || image.naturalWidth === 0) return false;
+  const size = radius * 2.5;
+  ctx.drawImage(image, sx - size / 2, sy - size / 2, size, size);
+  return true;
+}
 
 export function drawObjects({
   ctx,
@@ -30,6 +46,7 @@ export function drawObjects({
   screenW,
   screenH,
   selectedObject,
+  definitions,
 }: DrawObjectsOptions): void {
   const treeR = Math.max(2, Math.min(12, ppc * 1.5));
   const rockR = Math.max(2, Math.min(9, ppc * 1.2));
@@ -52,23 +69,24 @@ export function drawObjects({
     if (sx < -12 || sy < -12 || sx > screenW + 12 || sy > screenH + 12) continue;
 
     const isSelected = !!(selectedObject && selectedObject.id === obj.id);
+    const definition = definitions[obj.definitionId ?? obj.type];
     let hitR = treeR;
 
     if (obj.type === 'tree') {
       hitR = treeR;
-      drawTree(ctx, sx, sy, treeR, ppc);
+      if (!drawSprite(ctx, definition?.sprite, sx, sy, treeR, ppc)) drawTree(ctx, sx, sy, treeR, ppc, definition?.color);
     } else if (obj.type === 'rock') {
       hitR = rockR;
-      drawRock(ctx, sx, sy, rockR, ppc);
+      if (!drawSprite(ctx, definition?.sprite, sx, sy, rockR, ppc)) drawRock(ctx, sx, sy, rockR, ppc, definition?.color);
     } else if (obj.type === 'food') {
       hitR = foodR;
-      drawFood(ctx, sx, sy, foodR, ppc);
+      if (!drawSprite(ctx, definition?.sprite, sx, sy, foodR, ppc)) drawFood(ctx, sx, sy, foodR, ppc, definition?.color);
     } else if (obj.type === 'water_source') {
       hitR = waterR;
-      drawWater(ctx, sx, sy, waterR, ppc);
+      if (!drawSprite(ctx, definition?.sprite, sx, sy, waterR, ppc)) drawWater(ctx, sx, sy, waterR, ppc, definition?.color);
     } else if (obj.type === 'rest_spot') {
       hitR = restR;
-      drawRestSpot(ctx, sx, sy, restR, ppc);
+      if (!drawSprite(ctx, definition?.sprite, sx, sy, restR, ppc)) drawRestSpot(ctx, sx, sy, restR, ppc, definition?.color);
     }
 
     if (isSelected) {
@@ -83,10 +101,10 @@ export function drawObjects({
   }
 }
 
-function drawTree(ctx: CanvasRenderingContext2D, sx: number, sy: number, r: number, ppc: number): void {
+function drawTree(ctx: CanvasRenderingContext2D, sx: number, sy: number, r: number, ppc: number, color = '#2f7a2d'): void {
   if (ppc < DETAIL_PPC) {
     ctx.beginPath();
-    ctx.fillStyle = '#2f7a2d';
+    ctx.fillStyle = color;
     ctx.strokeStyle = 'rgba(0,0,0,0.75)';
     ctx.lineWidth = 1;
     ctx.arc(sx, sy, r, 0, Math.PI * 2);
@@ -107,7 +125,7 @@ function drawTree(ctx: CanvasRenderingContext2D, sx: number, sy: number, r: numb
   ctx.strokeRect(sx - trunkW / 2, canopyBaseY, trunkW, trunkH);
 
   ctx.beginPath();
-  ctx.fillStyle = '#2f7a2d';
+  ctx.fillStyle = color;
   ctx.moveTo(sx, canopyTop);
   ctx.lineTo(sx + canopyHalfW, canopyBaseY);
   ctx.lineTo(sx - canopyHalfW, canopyBaseY);
@@ -126,10 +144,10 @@ function drawTree(ctx: CanvasRenderingContext2D, sx: number, sy: number, r: numb
   }
 }
 
-function drawRock(ctx: CanvasRenderingContext2D, sx: number, sy: number, r: number, ppc: number): void {
+function drawRock(ctx: CanvasRenderingContext2D, sx: number, sy: number, r: number, ppc: number, color = '#8d8d95'): void {
   if (ppc < DETAIL_PPC) {
     ctx.beginPath();
-    ctx.fillStyle = '#8d8d95';
+    ctx.fillStyle = color;
     ctx.strokeStyle = 'rgba(0,0,0,0.8)';
     ctx.lineWidth = 1;
     ctx.moveTo(sx, sy - r);
@@ -141,7 +159,7 @@ function drawRock(ctx: CanvasRenderingContext2D, sx: number, sy: number, r: numb
     return;
   }
   ctx.beginPath();
-  ctx.fillStyle = '#8d8d95';
+  ctx.fillStyle = color;
   ctx.strokeStyle = 'rgba(0,0,0,0.85)';
   ctx.lineWidth = 1;
   ctx.moveTo(sx - r * 0.85, sy + r * 0.1);
@@ -162,10 +180,10 @@ function drawRock(ctx: CanvasRenderingContext2D, sx: number, sy: number, r: numb
   ctx.fill();
 }
 
-function drawFood(ctx: CanvasRenderingContext2D, sx: number, sy: number, r: number, ppc: number): void {
+function drawFood(ctx: CanvasRenderingContext2D, sx: number, sy: number, r: number, ppc: number, color = '#c8372d'): void {
   if (ppc < DETAIL_PPC) {
     ctx.beginPath();
-    ctx.fillStyle = '#c8372d';
+    ctx.fillStyle = color;
     ctx.strokeStyle = 'rgba(0,0,0,0.75)';
     ctx.lineWidth = 1;
     ctx.arc(sx, sy, r, 0, Math.PI * 2);
@@ -183,7 +201,7 @@ function drawFood(ctx: CanvasRenderingContext2D, sx: number, sy: number, r: numb
   ctx.lineWidth = 1;
   for (const [ox, oy] of offsets) {
     ctx.beginPath();
-    ctx.fillStyle = '#c8372d';
+    ctx.fillStyle = color;
     ctx.arc(sx + ox, sy + oy, br, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
@@ -207,7 +225,7 @@ function drawFood(ctx: CanvasRenderingContext2D, sx: number, sy: number, r: numb
   }
 }
 
-function drawWater(ctx: CanvasRenderingContext2D, sx: number, sy: number, r: number, ppc: number): void {
+function drawWater(ctx: CanvasRenderingContext2D, sx: number, sy: number, r: number, ppc: number, color = '#3d8ed0'): void {
   if (ppc >= DETAIL_PPC) {
     ctx.beginPath();
     ctx.strokeStyle = 'rgba(90,160,220,0.55)';
@@ -216,7 +234,7 @@ function drawWater(ctx: CanvasRenderingContext2D, sx: number, sy: number, r: num
     ctx.stroke();
   }
   ctx.beginPath();
-  ctx.fillStyle = '#3d8ed0';
+  ctx.fillStyle = color;
   ctx.strokeStyle = 'rgba(0,0,0,0.8)';
   ctx.lineWidth = 1;
   ctx.moveTo(sx, sy - r);
@@ -233,10 +251,10 @@ function drawWater(ctx: CanvasRenderingContext2D, sx: number, sy: number, r: num
   }
 }
 
-function drawRestSpot(ctx: CanvasRenderingContext2D, sx: number, sy: number, r: number, ppc: number): void {
+function drawRestSpot(ctx: CanvasRenderingContext2D, sx: number, sy: number, r: number, ppc: number, color = '#8a6436'): void {
   if (ppc < DETAIL_PPC) {
     ctx.beginPath();
-    ctx.fillStyle = '#7a5a38';
+    ctx.fillStyle = color;
     ctx.strokeStyle = 'rgba(0,0,0,0.8)';
     ctx.lineWidth = 1;
     ctx.arc(sx, sy, r, 0, Math.PI * 2);
@@ -245,7 +263,7 @@ function drawRestSpot(ctx: CanvasRenderingContext2D, sx: number, sy: number, r: 
     return;
   }
   ctx.beginPath();
-  ctx.fillStyle = '#8a6436';
+  ctx.fillStyle = color;
   ctx.strokeStyle = 'rgba(0,0,0,0.8)';
   ctx.lineWidth = 1;
   ctx.arc(sx, sy, r, 0, Math.PI * 2);

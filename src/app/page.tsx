@@ -6,16 +6,18 @@ import Sidebar from '@/components/Sidebar';
 import TutorialModal from '@/components/TutorialModal';
 import StatisticsModal from '@/components/StatisticsModal';
 import AgentFinder from '@/components/AgentFinder';
-import { BACKEND_URL, fetchAgent, fetchMeta, fetchTickCount } from '@/lib/api';
+import { BACKEND_URL, fetchAgent, fetchMeta, fetchObjectCatalog, fetchTickCount } from '@/lib/api';
 import type {
   AgentDetail,
   AgentInViewEntity,
+  ObjectCatalog,
   WorldMeta,
   WorldObject,
 } from '@/lib/types';
 
 export default function HomePage() {
   const [meta, setMeta] = useState<WorldMeta | null>(null);
+  const [objectCatalog, setObjectCatalog] = useState<ObjectCatalog | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [layer, setLayer] = useState<'height' | 'groundType' | 'waterDepth'>('height');
   const [selected, setSelected] = useState<HoverInfo | null>(null);
@@ -41,6 +43,7 @@ export default function HomePage() {
     fetchMeta()
       .then(setMeta)
       .catch((e) => setError(String(e)));
+    fetchObjectCatalog().then(setObjectCatalog).catch(() => {});
   }, []);
 
   // Check if this is the first visit and show tutorial
@@ -125,6 +128,7 @@ export default function HomePage() {
         {meta ? (
           <MapCanvas
             meta={meta}
+            objectCatalog={objectCatalog}
             layer={layer}
             showChunkGrid={showChunkGrid}
             showObjects={showObjects}
@@ -165,6 +169,7 @@ export default function HomePage() {
       <div className={`${mobilePanelOpen ? 'h-[46dvh] border-t border-white/15' : 'hidden'} min-h-0 shrink-0 overflow-hidden md:block md:h-full md:w-72 md:border-t-0`} style={{ paddingBottom: mobilePanelOpen ? 'env(safe-area-inset-bottom)' : undefined }}>
       <Sidebar
         meta={meta}
+        objectCatalog={objectCatalog}
         layer={layer}
         onLayer={setLayer}
         selected={selected}

@@ -109,8 +109,34 @@ export type EntityType = WorldObjectType | 'agent';
 export interface WorldObject {
   id: string;
   type: WorldObjectType;
+  definitionId?: string;
   x: number;
   y: number;
+}
+
+export interface ObjectDefinition {
+  id: string;
+  name: string;
+  category: string;
+  behavior: WorldObjectType;
+  color: string;
+  sprite: string;
+  blocksVision: boolean;
+  spawn: {
+    strategy: string;
+    weight: number;
+    preferredGroundTypes?: string[];
+    minHeight?: number;
+    maxHeight?: number;
+  };
+}
+
+export interface ObjectCatalog {
+  schemaVersion: 1;
+  id: string;
+  revision: number;
+  hash: string;
+  definitions: ObjectDefinition[];
 }
 
 export interface AgentInViewEntity {

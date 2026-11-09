@@ -64,7 +64,10 @@ export default function AgentFinder({ open, onClose, onChoose }: Props) {
         {error && <div role="alert" className="flex items-center justify-between gap-2 px-4 py-2 text-sm text-red-300"><span>{error}</span><button onClick={() => setReload(value => value + 1)} className="min-h-11 shrink-0 rounded-lg bg-gray-700 px-3 text-white">Retry</button></div>}
         <div className="min-h-0 overflow-y-auto overscroll-contain p-4 pt-2" style={{ touchAction: 'pan-y' }}>
           {loading ? <p className="py-6 text-center text-gray-400">Loading agents…</p>
-            : visible.length === 0 ? <p className="py-6 text-center text-gray-400">{error ? '' : agents.length === 0 ? 'No living agents found.' : 'No matches.'}</p>
+            : visible.length === 0 ? <div className="py-6 text-center text-gray-400">
+                <p>{error ? '' : agents.length === 0 ? 'No living agents found.' : 'No matches.'}</p>
+                {!error && agents.length === 0 && <a href="/admin/world" className="mt-4 inline-flex min-h-11 items-center rounded-lg border border-red-400/40 px-4 text-sm font-semibold text-red-200">Start a fresh world</a>}
+              </div>
               : <div className="grid gap-2">{visible.map(agent => (
                 <button key={agent.id} onClick={() => choose(agent)} disabled={!!choosing} className="flex min-h-14 w-full items-center justify-between gap-3 rounded-lg border border-white/10 bg-gray-800 p-3 text-left hover:border-amber-400 disabled:opacity-50">
                   <span><span className="block font-semibold text-amber-300">{agent.id}</span><span className="text-xs text-gray-400">{agent.state}{agent.currentGoal ? ` · ${agent.currentGoal.type}` : ''}</span></span>

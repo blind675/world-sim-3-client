@@ -122,7 +122,7 @@ export async function fetchAllAgents(signal?: AbortSignal): Promise<AgentInViewE
   return data.agents || [];
 }
 
-export async function fetchTickCount(signal?: AbortSignal): Promise<{ tickCount: number; tickMs: number; agentCount: number }> {
+export async function fetchTickCount(signal?: AbortSignal): Promise<{ tickCount: number; tickMs: number; agentCount: number; deathCount: number; worldId?: string }> {
   const res = await fetch(`${BACKEND_URL}/api/simulation/status`, {
     method: 'GET',
     signal,
@@ -132,7 +132,7 @@ export async function fetchTickCount(signal?: AbortSignal): Promise<{ tickCount:
     const text = await res.text().catch(() => '');
     throw new Error(`GET /api/simulation/status failed: ${res.status} ${text}`);
   }
-  return res.json() as Promise<{ tickCount: number; tickMs: number; agentCount: number }>;
+  return res.json() as Promise<{ tickCount: number; tickMs: number; agentCount: number; deathCount: number; worldId?: string }>;
 }
 
 export function fetchWorldStatistics(signal?: AbortSignal) {

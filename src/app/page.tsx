@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import MapCanvas, { HoverInfo } from '@/components/MapCanvas';
 import Sidebar from '@/components/Sidebar';
 import TutorialModal from '@/components/TutorialModal';
@@ -38,6 +38,7 @@ export default function HomePage() {
   const [following, setFollowing] = useState(false);
   const [agentMessage, setAgentMessage] = useState<string | null>(null);
   const [focusTarget, setFocusTarget] = useState<{ id: string; x: number; y: number; nonce: number } | null>(null);
+  const worldIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     fetchMeta()
@@ -83,6 +84,18 @@ export default function HomePage() {
       try {
         const tickInfo = await fetchTickCount();
         if (active) {
+          if (tickInfo.worldId && worldIdRef.current && tickInfo.worldId !== worldIdRef.current) {
+            setSelected(null);
+            setSelectedObject(null);
+            setSelectedAgentId(null);
+            setSelectedAgent(null);
+            setFocusTarget(null);
+            setFollowing(false);
+            setFinderOpen(false);
+            setAgentMessage('The world restarted. Choose a living agent to follow.');
+            setRefreshKey(value => value + 1);
+          }
+          if (tickInfo.worldId) worldIdRef.current = tickInfo.worldId;
           setTickCount(tickInfo.tickCount);
           setTickMs(tickInfo.tickMs);
         }

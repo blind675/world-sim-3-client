@@ -502,6 +502,7 @@ export default function Sidebar({
         <p><b>Find agent</b> — jump to a living agent</p>
         <p className="mt-2 text-gray-500">World wraps seamlessly on both axes.</p>
         <a href="/admin/objects" className="mt-3 flex min-h-11 items-center justify-center rounded border border-white/15 bg-gray-800 text-sm font-medium text-gray-100 md:text-xs">Object catalogue & draft editor</a>
+        <a href="/admin/world" className="mt-2 flex min-h-11 items-center justify-center rounded border border-red-400/30 bg-gray-800 text-sm font-medium text-red-200 md:text-xs">World administration</a>
 
         <div className="mt-3 pt-3 border-t border-white/5">
           <button

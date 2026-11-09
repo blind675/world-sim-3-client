@@ -2,6 +2,8 @@
 
 Next.js canvas viewer for the Life Simulation v3 project. The [backend repository](https://github.com/blind675/world-sim-3-server) owns the world, simulation, and shared project documentation: [overview](https://github.com/blind675/world-sim-3-server/blob/main/docs/PROJECT_OVERVIEW.md), [PRD](https://github.com/blind675/world-sim-3-server/blob/main/docs/PRODUCT_REQUIREMENTS.md), and [build checklist](https://github.com/blind675/world-sim-3-server/blob/main/docs/BUILD_CHECKLIST.md).
 
+Routine work is committed to `staging`; `main` is reserved for an explicitly requested production release. See the backend's [release workflow](https://github.com/blind675/world-sim-3-server/blob/staging/docs/RELEASE_WORKFLOW.md). Keep Netlify's production branch on `main`, and disable staging branch deploys or previews in Netlify settings if they consume unwanted build minutes.
+
 ## Run locally
 
 Start the backend, then run:

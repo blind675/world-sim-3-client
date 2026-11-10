@@ -14,9 +14,8 @@ function between(from: Point, to: Point, progress: number, worldW: number, world
   return { x: axis(from.x, to.x, worldW), y: axis(from.y, to.y, worldH) };
 }
 
-// The server starts a step on one tick and completes it on the next. It
-// starts the following step one tick later. The moveSpeed trait does not
-// change that cadence, so animation uses the actual server schedule.
+// A step spans two ticks and may traverse several adjacent path cells. Use
+// the route polyline so a fast walker still turns around terrain and wraps.
 export function interpolateAgentPosition(
   agent: AgentInViewEntity,
   animationTime: number,
@@ -27,16 +26,23 @@ export function interpolateAgentPosition(
   const path = agent.path ?? [];
   const origin = agent.isMoving && agent.movementStartPos ? agent.movementStartPos : agent;
   if (path.length > 0 && agent.timelineTickAt != null && Number.isFinite(agent.timelineTickAt) && tickMs > 0) {
+    const stride = Math.max(1, Math.floor(agent.moveCellsPerStep ?? 1));
     const firstStepAt = agent.timelineTickAt + (agent.isMoving ? 0 : tickMs);
     // Predict only a few ticks without another server observation. If the
     // instance pauses or the network drops, hold instead of running away.
     const elapsed = Math.min(animationTime - firstStepAt, 4 * tickMs);
     if (elapsed <= 0) return { x: origin.x, y: origin.y };
     const stepIndex = Math.floor(elapsed / (2 * tickMs));
-    if (stepIndex >= path.length) return path[path.length - 1];
-    const from = stepIndex === 0 ? origin : path[stepIndex - 1];
+    const startIndex = stepIndex * stride;
+    if (startIndex >= path.length) return path[path.length - 1];
+    const segmentLength = Math.min(stride, path.length - startIndex);
     const progress = Math.min(1, (elapsed % (2 * tickMs)) / tickMs);
-    return between(from, path[stepIndex], progress, worldW, worldH);
+    const distance = progress * segmentLength;
+    const cellIndex = Math.min(segmentLength - 1, Math.floor(distance));
+    const from = cellIndex === 0
+      ? (startIndex === 0 ? origin : path[startIndex - 1])
+      : path[startIndex + cellIndex - 1];
+    return between(from, path[startIndex + cellIndex], distance - cellIndex, worldW, worldH);
   }
 
   // A backend without timing metadata still gets one stable animation per

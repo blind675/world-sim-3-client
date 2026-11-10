@@ -32,6 +32,17 @@ test('resumes a step in progress and takes the short direction across a seam', (
   assert.deepEqual(sample(agent, 2500, 10, 10), point(0.5, 0));
 });
 
+test('fast walking follows path bends and wraps within one step', () => {
+  const agent = {
+    id: 'a-fast', x: 8, y: 0, isMoving: true, movementStartPos: point(8, 0),
+    targetPos: point(0, 1), moveCellsPerStep: 3,
+    path: [point(9, 0), point(0, 0), point(0, 1), point(1, 1)], timelineTickAt: 0,
+  };
+  assert.deepEqual(sample(agent, 500, 10, 10), point(9.5, 0));
+  assert.deepEqual(sample(agent, 1000, 10, 10), point(0, 1));
+  assert.deepEqual(sample(agent, 2500, 10, 10), point(0.5, 1));
+});
+
 test('holds after several ticks without a fresh server observation', () => {
   const agent = {
     id: 'a-3', x: 0, y: 0, isMoving: false,

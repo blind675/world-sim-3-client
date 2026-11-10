@@ -37,12 +37,9 @@ export default function StatisticsModal({ isOpen, onClose, meta }: Props) {
 
   const formatNumber = (num: number) => num.toLocaleString();
   const formatPercent = (value: number) => `${(value * 100).toFixed(1)}%`;
-  const formatTickTime = (tickCount: number, tickMs: number) => {
-    const totalSeconds = (tickCount * tickMs) / 1000;
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = Math.floor(totalSeconds % 60);
-    return `${hours}h ${minutes}m ${seconds}s`;
+  const formatTickTime = (tickCount: number, ticksPerDay: number) => {
+    const minute = Math.floor((tickCount % ticksPerDay) * 1440 / ticksPerDay);
+    return `Day ${Math.floor(tickCount / ticksPerDay) + 1}, ${String(Math.floor(minute / 60)).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}`;
   };
 
   if (!isOpen) return null;
@@ -94,8 +91,8 @@ export default function StatisticsModal({ isOpen, onClose, meta }: Props) {
                   <span className="text-white ml-2">{formatNumber(statistics.world.tickCount)}</span>
                 </div>
                 <div>
-                  <span className="text-gray-400">Simulation Time:</span>
-                  <span className="text-white ml-2">{formatTickTime(statistics.world.tickCount, statistics.world.tickMs)}</span>
+                  <span className="text-gray-400">World time:</span>
+                  <span className="text-white ml-2">{formatTickTime(statistics.world.tickCount, meta?.simulation.ticksPerDay ?? 360)}</span>
                 </div>
                 {meta && (
                   <>

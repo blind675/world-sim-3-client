@@ -12,7 +12,7 @@ export interface WorldMeta {
     maxHeight: number;
     seaLevel: number;
   };
-  simulation: { tickMs: number };
+  simulation: { tickMs: number; ticksPerDay?: number };
   perception?: {
     coneDeg: number;
     coneHalfAngleRad: number;
@@ -155,6 +155,7 @@ export interface AgentInViewEntity {
   movementStartTick?: number | null;
   currentTick: number;
   moveSpeed: number;
+  moveCellsPerStep?: number;
   isMoving: boolean;
   // Full path for frontend animation
   path?: { x: number; y: number }[];
@@ -213,6 +214,7 @@ export interface AgentSummary {
   pathLength: number;
   pathIndex: number;
   pathRemaining: number;
+  moveCellsPerStep?: number;
 }
 
 export type MemoryEntryType = WorldObjectType | 'agent';

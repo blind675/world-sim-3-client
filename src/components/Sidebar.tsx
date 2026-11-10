@@ -436,6 +436,11 @@ export default function Sidebar({
       <section className="bg-panelSoft rounded p-3">
         <h2 className="text-xs uppercase text-gray-400 mb-2">Simulation</h2>
         {row('ticks', tickCount)}
+        {row('world time', (() => {
+          const ticksPerDay = meta?.simulation.ticksPerDay ?? 360;
+          const minute = Math.floor((tickCount % ticksPerDay) * 1440 / ticksPerDay);
+          return `Day ${Math.floor(tickCount / ticksPerDay) + 1}, ${String(Math.floor(minute / 60)).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}`;
+        })())}
         <div className="text-xs text-gray-500 pt-1">
           Running automatically
         </div>
@@ -466,7 +471,7 @@ export default function Sidebar({
             {row('action', selectedAgent.currentAction ?? '—')}
             {row('path', `${selectedAgent.pathIndex} / ${selectedAgent.pathLength}`)}
             {row('vision', selectedAgent.traits.visionRange)}
-            {row('speed', selectedAgent.traits.moveSpeed)}
+            {row('walking pace', `${selectedAgent.moveCellsPerStep ?? 1} cells / 2 ticks`)}
 
             <NeedsPanel agent={selectedAgent} />
             <MemoryPanel memory={selectedAgent.memory} currentTick={tickCount} agentId={selectedAgent.id} />

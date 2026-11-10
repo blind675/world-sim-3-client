@@ -161,6 +161,7 @@ export default function MapCanvas({
       currentTick: selectedAgent.currentTick,
       isMoving: selectedAgent.isMoving,
       moveSpeed: selectedAgent.traits.moveSpeed,
+      moveCellsPerStep: selectedAgent.moveCellsPerStep,
       path: selectedAgent.path,
       timelineTickAt: selectedAgent.timelineTickAt,
     };

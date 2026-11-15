@@ -125,10 +125,12 @@ export interface ObjectDefinition {
   spawn: {
     strategy: string;
     weight: number;
+    candidatesPerChunk?: number;
     preferredGroundTypes?: string[];
     minHeight?: number;
     maxHeight?: number;
   };
+  lifecycle?: { dynamicLifetimeTicks: number };
 }
 
 export interface ObjectCatalog {

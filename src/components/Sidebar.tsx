@@ -457,6 +457,7 @@ export default function Sidebar({
             {row('facing', `${((selectedAgent.facing * 180) / Math.PI).toFixed(0)}°`)}
             {row('sex', selectedAgent.sex)}
             {row('state', selectedAgent.state)}
+            {row('behavior', selectedAgent.behavior?.id?.replaceAll('_', ' ') ?? '—')}
             {row('goal', selectedAgent.currentGoal ? (
               <span>
                 {selectedAgent.currentGoal.type}

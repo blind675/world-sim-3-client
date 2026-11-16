@@ -155,6 +155,7 @@ export default function MapCanvas({
       state: selectedAgent.state,
       currentGoal: selectedAgent.currentGoal,
       currentAction: selectedAgent.currentAction ?? undefined,
+      behavior: selectedAgent.behavior,
       movementStartPos: selectedAgent.movementStartPos,
       targetPos: selectedAgent.targetPos,
       movementStartTick: selectedAgent.movementStartTick,

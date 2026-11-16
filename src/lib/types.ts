@@ -151,6 +151,7 @@ export interface AgentInViewEntity {
   dead?: boolean;
   currentGoal?: AgentGoal | null;
   currentAction?: string;
+  behavior?: { id: string; startedTick: number; stepIndex: number; stepTicksLeft: number } | null;
   // Movement data for interpolation
   movementStartPos?: { x: number; y: number } | null;
   targetPos?: { x: number; y: number } | null;
@@ -205,6 +206,7 @@ export interface AgentSummary {
   state: string;
   currentGoal: AgentGoal | null;
   currentAction: string | null;
+  behavior?: { id: string; startedTick: number; stepIndex: number; stepTicksLeft: number } | null;
   targetId: string | null;
   actionTargetId: string | null;
   actionTicksRemaining: number;

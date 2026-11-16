@@ -32,15 +32,32 @@ export function validateObjectCatalog(input: unknown): CatalogDraft {
       || !/^#[0-9a-fA-F]{6}$/.test(def.color ?? '') || !SLUG.test(def.sprite ?? '')
       || typeof def.blocksVision !== 'boolean') throw new Error(`Invalid definition: ${def.id}`);
     const spawn = def.spawn;
-    if (!spawn || spawn.strategy !== SPAWN_STRATEGY[def.behavior!]
+    const habitat = spawn?.strategy === 'habitat';
+    if (!spawn || (spawn.strategy !== SPAWN_STRATEGY[def.behavior!]
+      && !(habitat && (def.behavior === 'tree' || def.behavior === 'food')))
       || !Number.isFinite(spawn.weight) || spawn.weight <= 0 || spawn.weight > 100
       || (spawn.preferredGroundTypes !== undefined && (!Array.isArray(spawn.preferredGroundTypes)
         || !spawn.preferredGroundTypes.every(type => GROUND_TYPES.has(type))))
       || (spawn.minHeight !== undefined && !Number.isFinite(spawn.minHeight))
       || (spawn.maxHeight !== undefined && !Number.isFinite(spawn.maxHeight))
-      || (spawn.minHeight !== undefined && spawn.maxHeight !== undefined && spawn.minHeight > spawn.maxHeight)) {
+      || (spawn.minHeight !== undefined && spawn.maxHeight !== undefined && spawn.minHeight > spawn.maxHeight)
+      || (habitat && (!Number.isSafeInteger(spawn.candidatesPerChunk)
+        || (spawn.candidatesPerChunk ?? 0) < 1 || (spawn.candidatesPerChunk ?? 0) > 64
+        || !spawn.preferredGroundTypes?.length))
+      || (!habitat && spawn.candidatesPerChunk !== undefined)) {
       throw new Error(`Invalid spawn settings: ${def.id}`);
     }
+    if (def.lifecycle !== undefined && (def.behavior !== 'food' || !habitat || !def.lifecycle
+      || !Number.isSafeInteger(def.lifecycle?.dynamicLifetimeTicks)
+      || (def.lifecycle.dynamicLifetimeTicks ?? 0) < 1
+      || (def.lifecycle.dynamicLifetimeTicks ?? 0) > 1440
+      || Object.keys(def.lifecycle).length !== 1)) {
+      throw new Error(`Invalid lifecycle: ${def.id}`);
+    }
+  }
+  if (catalog.definitions.reduce((sum, def) => sum + (def.spawn.strategy === 'habitat'
+    ? (def.spawn.candidatesPerChunk ?? 0) : 0), 0) > 256) {
+    throw new Error('Habitat placement exceeds 256 attempts per chunk.');
   }
   for (const behavior of Object.keys(SPAWN_STRATEGY)) {
     const base = catalog.definitions.find(def => def.id === behavior && def.behavior === behavior);

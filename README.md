@@ -35,3 +35,5 @@ The map loads object names, colours, and sprite keys from the backend's read-onl
 Agent movement follows the server's path and tick timing between viewport updates. The viewer polls visible agents every 2–5 seconds, corrects from fresh server state, and holds at the end of a predicted route or after several ticks without an update. The backend should be deployed before this frontend so its timing fields and agent type are available. On Node.js 22.18 or newer, run the movement tests with `node --test test/*.test.mjs`.
 
 The milestone 3 backend can traverse several adjacent path cells per movement step. The viewer animates each segment along the actual route, including bends and wrapped edges, and displays the simulated day and time from the backend's 360-tick clock.
+
+The daily-rhythm backend reports ambient light and each agent's effective vision range. The web map dims terrain at night while keeping routes and entities readable, and the selected-agent panel shows its sleep preference and current/base vision. Older backend responses remain viewable without these optional fields.

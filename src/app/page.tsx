@@ -29,6 +29,7 @@ export default function HomePage() {
   const [showVision, setShowVision] = useState(true);
   const [showClusterExtents, setShowClusterExtents] = useState(true);
   const [tickCount, setTickCount] = useState(0);
+  const [lightLevel, setLightLevel] = useState(1);
   const [refreshKey, setRefreshKey] = useState(0);
   const [tickMs, setTickMs] = useState(200);
   const [showTutorial, setShowTutorial] = useState(false);
@@ -97,6 +98,7 @@ export default function HomePage() {
           }
           if (tickInfo.worldId) worldIdRef.current = tickInfo.worldId;
           setTickCount(tickInfo.tickCount);
+          setLightLevel(tickInfo.light?.level ?? 1);
           setTickMs(tickInfo.tickMs);
         }
       } catch (error) {
@@ -141,6 +143,7 @@ export default function HomePage() {
         {meta ? (
           <MapCanvas
             meta={meta}
+            lightLevel={lightLevel}
             objectCatalog={objectCatalog}
             layer={layer}
             showChunkGrid={showChunkGrid}

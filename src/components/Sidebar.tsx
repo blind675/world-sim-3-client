@@ -439,7 +439,8 @@ export default function Sidebar({
         {row('world time', (() => {
           const ticksPerDay = meta?.simulation.ticksPerDay ?? 360;
           const minute = Math.floor((tickCount % ticksPerDay) * 1440 / ticksPerDay);
-          return `Day ${Math.floor(tickCount / ticksPerDay) + 1}, ${String(Math.floor(minute / 60)).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}`;
+          const hour = Math.floor(minute / 60);
+          return `Day ${Math.floor(tickCount / ticksPerDay) + 1}, ${String(hour).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')} (${hour >= 6 && hour < 18 ? 'day' : 'night'})`;
         })())}
         <div className="text-xs text-gray-500 pt-1">
           Running automatically
@@ -471,7 +472,8 @@ export default function Sidebar({
             ) : '---')}
             {row('action', selectedAgent.currentAction ?? '—')}
             {row('path', `${selectedAgent.pathIndex} / ${selectedAgent.pathLength}`)}
-            {row('vision', selectedAgent.traits.visionRange)}
+            {row('sleep rhythm', selectedAgent.traits.circadianType ?? '—')}
+            {row('vision', `${selectedAgent.effectiveVisionRange ?? selectedAgent.traits.visionRange} / ${selectedAgent.traits.visionRange} cells`)}
             {row('walking pace', `${selectedAgent.moveCellsPerStep ?? 1} cells / 2 ticks`)}
 
             <NeedsPanel agent={selectedAgent} />

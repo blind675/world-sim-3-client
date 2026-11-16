@@ -183,6 +183,7 @@ export interface EntitiesInViewResponse {
 
 export interface AgentTraits {
   visionRange: number;
+  circadianType?: 'diurnal' | 'nocturnal';
   memoryCapacity: number;
   memoryDecayRate: number;
   moveSpeed: number;
@@ -215,6 +216,7 @@ export interface AgentSummary {
   tiredness: number;
   dead?: boolean;
   traits: AgentTraits;
+  effectiveVisionRange?: number;
   pathLength: number;
   pathIndex: number;
   pathRemaining: number;

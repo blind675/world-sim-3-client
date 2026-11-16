@@ -31,6 +31,7 @@ export interface HoverInfo {
 
 interface Props {
   meta: WorldMeta;
+  lightLevel?: number;
   objectCatalog?: ObjectCatalog | null;
   layer: LayerKey;
   showChunkGrid?: boolean;
@@ -53,6 +54,7 @@ interface Props {
 
 export default function MapCanvas({
   meta,
+  lightLevel = 1,
   objectCatalog,
   layer,
   showChunkGrid,
@@ -265,6 +267,12 @@ export default function MapCanvas({
       }
     }
 
+    // Dim terrain at night while keeping objects, routes, and agents legible.
+    if (lightLevel < 1) {
+      ctx.fillStyle = `rgba(7, 16, 37, ${Math.min(0.34, Math.max(0, (1 - lightLevel) * 0.75))})`;
+      ctx.fillRect(0, 0, size.w, size.h);
+    }
+
     const sharedDrawProps = {
       ppc,
       worldLeft,
@@ -363,7 +371,7 @@ export default function MapCanvas({
       }
     }
   }, [
-    meta, size, cs, camera, layer, visibleChunks, chunksW, chunksH,
+    meta, lightLevel, size, cs, camera, layer, visibleChunks, chunksW, chunksH,
     showChunkGrid, showObjects, showVision, showClusterExtents,
     objectsInView, selectedObject, objectDefinitions, renderAgents, selectedAgentId,
     selectedAgentPath, selectedAgent, animationFrame, selected,

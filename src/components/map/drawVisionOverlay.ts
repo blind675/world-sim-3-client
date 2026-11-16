@@ -76,7 +76,7 @@ export function drawVisionOverlay({
   const sx = (wx - worldLeft) * ppc;
   const sy = (wy - worldTop) * ppc;
 
-  const visionR = selectedAgent.traits.visionRange * ppc;
+  const visionR = (selectedAgent.effectiveVisionRange ?? selectedAgent.traits.visionRange) * ppc;
   const nearR = meta.perception.nearRadius * ppc;
   const half = meta.perception.coneHalfAngleRad;
 

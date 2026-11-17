@@ -210,6 +210,8 @@ export interface AgentSummary {
   species?: string;
   templateId?: string;
   lifespanDays?: number;
+  parentIds?: string[];
+  lastBirthTick?: number | null;
   state: string;
   currentGoal: AgentGoal | null;
   currentAction: string | null;

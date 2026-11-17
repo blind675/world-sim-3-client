@@ -32,6 +32,7 @@ interface Props {
   showClusterExtents: boolean;
   onToggleClusterExtents: (v: boolean) => void;
   tickCount: number;
+  population: { alive: number; births: number; cap: number } | null;
   climate: { weather: string; temperatureC: number } | null;
   onShowTutorial: () => void;
   onShowStatistics: () => void;
@@ -280,6 +281,7 @@ export default function Sidebar({
   showClusterExtents,
   onToggleClusterExtents,
   tickCount,
+  population,
   climate,
   onShowTutorial,
   onShowStatistics,
@@ -438,6 +440,8 @@ export default function Sidebar({
       <section className="bg-panelSoft rounded p-3">
         <h2 className="text-xs uppercase text-gray-400 mb-2">Simulation</h2>
         {row('ticks', tickCount)}
+        {population && row('living agents', `${population.alive} / ${population.cap}`)}
+        {population && row('births', population.births)}
         {row('world time', (() => {
           const ticksPerDay = meta?.simulation.ticksPerDay ?? 360;
           const minute = Math.floor((tickCount % ticksPerDay) * 1440 / ticksPerDay);
@@ -463,6 +467,8 @@ export default function Sidebar({
             {row('sex', selectedAgent.sex)}
             {selectedAgent.species && row('species', selectedAgent.species)}
             {selectedAgent.lifeStage && row('life stage', selectedAgent.lifeStage)}
+            {selectedAgent.parentIds && selectedAgent.parentIds.length > 0
+              && row('parents', selectedAgent.parentIds.join(' + '))}
             {row('age', `${selectedAgent.ageDays ?? selectedAgent.age} simulated days`)}
             {selectedAgent.lifespanDays !== undefined && <>
               {row('lifespan potential', `${selectedAgent.lifespanDays} days`)}

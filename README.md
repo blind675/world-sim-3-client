@@ -40,3 +40,4 @@ The daily-rhythm backend reports ambient light and each agent's effective vision
 
 The climate backend also reports the day's weather, sea-level air temperature, and each agent's local temperature. The viewer shows these read-only values in the simulation and selected-agent panels when available.
 The selected-agent panel also shows the ground-bird species, life stage, simulated age, and lifespan potential when the milestone 8 backend is available. Lifespan is informational; age-related mortality has not been activated. These optional fields keep the viewer compatible with older backend deployments.
+With the milestone 9 backend, the simulation panel shows living agents, cumulative births, and the population cap. A newborn's selected-agent details show its parent IDs. These fields are read-only and optional while an older backend is deployed.

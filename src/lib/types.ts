@@ -259,6 +259,13 @@ export interface MemoryEntryCluster extends MemoryEntryBase {
 
 export type MemoryEntry = MemoryEntryEntity | MemoryEntryCluster;
 
+export interface CarriedFruit {
+  kind: 'fruit';
+  sourceId: string;
+  definitionId: string | null;
+  pickedTick: number;
+}
+
 export interface AgentDetail extends AgentSummary {
   currentTick: number;
   isMoving: boolean;
@@ -268,7 +275,7 @@ export interface AgentDetail extends AgentSummary {
   serverTime?: number;
   lastTickAt?: number | null;
   timelineTickAt?: number;
-  inventory: unknown[];
+  inventory: CarriedFruit[];
   memory: MemoryEntry[];
   path: { x: number; y: number }[];
 }

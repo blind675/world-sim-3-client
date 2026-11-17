@@ -289,6 +289,8 @@ export default function Sidebar({
   const selectedRef = useRef<HTMLElement | null>(null);
   const selectedId = selectedAgent?.id;
   const selectedDefinition = objectCatalog?.definitions.find(definition => definition.id === (selectedObject?.definitionId ?? selectedObject?.type));
+  const carriedFruit = selectedAgent?.inventory?.[0];
+  const carriedSourceName = carriedFruit && (objectCatalog?.definitions.find(definition => definition.id === carriedFruit.definitionId)?.name ?? 'food source');
   useEffect(() => {
     if (selectedId && window.matchMedia('(max-width: 767px)').matches) {
       selectedRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
@@ -472,7 +474,6 @@ export default function Sidebar({
             {row('age', `${selectedAgent.ageDays ?? selectedAgent.age} simulated days`)}
             {selectedAgent.lifespanDays !== undefined && <>
               {row('lifespan potential', `${selectedAgent.lifespanDays} days`)}
-              <p className="mb-2 text-right text-xs text-gray-500">Age-related death is not active yet.</p>
             </>}
             {row('state', selectedAgent.state)}
             {row('behavior', selectedAgent.behavior?.id?.replaceAll('_', ' ') ?? '—')}
@@ -487,7 +488,9 @@ export default function Sidebar({
                 ) : null}
               </span>
             ) : '---')}
-            {row('action', selectedAgent.currentAction ?? '—')}
+            {row('action', selectedAgent.currentAction?.replaceAll('_', ' ') ?? '—')}
+            {row('carrying', carriedFruit ? `Fruit from ${carriedSourceName}` : 'Nothing')}
+            {carriedFruit && row('fruit source', carriedFruit.sourceId)}
             {row('path', `${selectedAgent.pathIndex} / ${selectedAgent.pathLength}`)}
             {row('sleep rhythm', selectedAgent.traits.circadianType ?? '—')}
             {row('vision', `${selectedAgent.effectiveVisionRange ?? selectedAgent.traits.visionRange} / ${selectedAgent.traits.visionRange} cells`)}

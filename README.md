@@ -37,3 +37,5 @@ Agent movement follows the server's path and tick timing between viewport update
 The milestone 3 backend can traverse several adjacent path cells per movement step. The viewer animates each segment along the actual route, including bends and wrapped edges, and displays the simulated day and time from the backend's 360-tick clock.
 
 The daily-rhythm backend reports ambient light and each agent's effective vision range. The web map dims terrain at night while keeping routes and entities readable, and the selected-agent panel shows its sleep preference and current/base vision. Older backend responses remain viewable without these optional fields.
+
+The climate backend also reports the day's weather, sea-level air temperature, and each agent's local temperature. The viewer shows these read-only values in the simulation and selected-agent panels when available.

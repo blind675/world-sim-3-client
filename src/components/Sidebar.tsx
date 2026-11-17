@@ -32,6 +32,7 @@ interface Props {
   showClusterExtents: boolean;
   onToggleClusterExtents: (v: boolean) => void;
   tickCount: number;
+  climate: { weather: string; temperatureC: number } | null;
   onShowTutorial: () => void;
   onShowStatistics: () => void;
 }
@@ -279,6 +280,7 @@ export default function Sidebar({
   showClusterExtents,
   onToggleClusterExtents,
   tickCount,
+  climate,
   onShowTutorial,
   onShowStatistics,
 }: Props) {
@@ -442,6 +444,8 @@ export default function Sidebar({
           const hour = Math.floor(minute / 60);
           return `Day ${Math.floor(tickCount / ticksPerDay) + 1}, ${String(hour).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')} (${hour >= 6 && hour < 18 ? 'day' : 'night'})`;
         })())}
+        {climate && row('weather', climate.weather.replaceAll('_', ' '))}
+        {climate && row('sea-level air', `${climate.temperatureC.toFixed(1)}°C`)}
         <div className="text-xs text-gray-500 pt-1">
           Running automatically
         </div>
@@ -474,6 +478,7 @@ export default function Sidebar({
             {row('path', `${selectedAgent.pathIndex} / ${selectedAgent.pathLength}`)}
             {row('sleep rhythm', selectedAgent.traits.circadianType ?? '—')}
             {row('vision', `${selectedAgent.effectiveVisionRange ?? selectedAgent.traits.visionRange} / ${selectedAgent.traits.visionRange} cells`)}
+            {selectedAgent.temperatureC !== undefined && row('local air', `${selectedAgent.temperatureC.toFixed(1)}°C`)}
             {row('walking pace', `${selectedAgent.moveCellsPerStep ?? 1} cells / 2 ticks`)}
 
             <NeedsPanel agent={selectedAgent} />

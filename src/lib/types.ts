@@ -217,6 +217,7 @@ export interface AgentSummary {
   dead?: boolean;
   traits: AgentTraits;
   effectiveVisionRange?: number;
+  temperatureC?: number;
   pathLength: number;
   pathIndex: number;
   pathRemaining: number;

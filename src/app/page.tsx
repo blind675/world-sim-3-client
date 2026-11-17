@@ -30,6 +30,7 @@ export default function HomePage() {
   const [showClusterExtents, setShowClusterExtents] = useState(true);
   const [tickCount, setTickCount] = useState(0);
   const [lightLevel, setLightLevel] = useState(1);
+  const [climate, setClimate] = useState<{ weather: string; temperatureC: number } | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [tickMs, setTickMs] = useState(200);
   const [showTutorial, setShowTutorial] = useState(false);
@@ -99,6 +100,8 @@ export default function HomePage() {
           if (tickInfo.worldId) worldIdRef.current = tickInfo.worldId;
           setTickCount(tickInfo.tickCount);
           setLightLevel(tickInfo.light?.level ?? 1);
+          setClimate(tickInfo.weather && tickInfo.temperatureC !== undefined
+            ? { weather: tickInfo.weather, temperatureC: tickInfo.temperatureC } : null);
           setTickMs(tickInfo.tickMs);
         }
       } catch (error) {
@@ -203,6 +206,7 @@ export default function HomePage() {
         showClusterExtents={showClusterExtents}
         onToggleClusterExtents={setShowClusterExtents}
         tickCount={tickCount}
+        climate={climate}
         onShowTutorial={() => setShowTutorial(true)}
         onShowStatistics={() => setShowStatistics(true)}
       />

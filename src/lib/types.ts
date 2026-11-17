@@ -204,6 +204,12 @@ export interface AgentSummary {
   facing: number;
   sex: 'female' | 'male';
   age: number;
+  ageDays?: number;
+  birthTick?: number;
+  lifeStage?: 'juvenile' | 'adult' | 'elder';
+  species?: string;
+  templateId?: string;
+  lifespanDays?: number;
   state: string;
   currentGoal: AgentGoal | null;
   currentAction: string | null;

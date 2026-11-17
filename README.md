@@ -39,3 +39,4 @@ The milestone 3 backend can traverse several adjacent path cells per movement st
 The daily-rhythm backend reports ambient light and each agent's effective vision range. The web map dims terrain at night while keeping routes and entities readable, and the selected-agent panel shows its sleep preference and current/base vision. Older backend responses remain viewable without these optional fields.
 
 The climate backend also reports the day's weather, sea-level air temperature, and each agent's local temperature. The viewer shows these read-only values in the simulation and selected-agent panels when available.
+The selected-agent panel also shows the ground-bird species, life stage, simulated age, and lifespan potential when the milestone 8 backend is available. Lifespan is informational; age-related mortality has not been activated. These optional fields keep the viewer compatible with older backend deployments.

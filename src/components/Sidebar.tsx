@@ -40,8 +40,8 @@ interface Props {
 function row(label: string, value: React.ReactNode) {
   return (
     <div className="flex justify-between gap-4 text-sm py-0.5 md:text-xs">
-      <span className="text-gray-400">{label}</span>
-      <span className="text-gray-100 tabular-nums">{value}</span>
+      <span className="shrink-0 text-gray-400">{label}</span>
+      <span className="min-w-0 break-words text-right text-gray-100 tabular-nums">{value}</span>
     </div>
   );
 }
@@ -461,6 +461,13 @@ export default function Sidebar({
             {row('x, y', `${selectedAgent.x}, ${selectedAgent.y}`)}
             {row('facing', `${((selectedAgent.facing * 180) / Math.PI).toFixed(0)}°`)}
             {row('sex', selectedAgent.sex)}
+            {selectedAgent.species && row('species', selectedAgent.species)}
+            {selectedAgent.lifeStage && row('life stage', selectedAgent.lifeStage)}
+            {row('age', `${selectedAgent.ageDays ?? selectedAgent.age} simulated days`)}
+            {selectedAgent.lifespanDays !== undefined && <>
+              {row('lifespan potential', `${selectedAgent.lifespanDays} days`)}
+              <p className="mb-2 text-right text-xs text-gray-500">Age-related death is not active yet.</p>
+            </>}
             {row('state', selectedAgent.state)}
             {row('behavior', selectedAgent.behavior?.id?.replaceAll('_', ' ') ?? '—')}
             {row('goal', selectedAgent.currentGoal ? (

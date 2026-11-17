@@ -45,7 +45,9 @@ export interface WorldStatistics {
   };
   deaths: {
     total: number;
+    retainedRecords?: number;
     byCause: {
+      old_age?: number;
       hunger: number;
       thirst: number;
       tiredness: number;
@@ -290,8 +292,8 @@ export interface DeathRecord {
   x: number;
   y: number;
   tick: number;
-  cause: 'hunger' | 'thirst' | 'tiredness' | 'unknown';
-  timestamp: number;
+  cause: 'old_age' | 'hunger' | 'thirst' | 'tiredness' | 'unknown';
+  timestamp: number | null;
 }
 
 export interface CellResponse {

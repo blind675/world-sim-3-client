@@ -45,7 +45,9 @@ export interface WorldStatistics {
   };
   deaths: {
     total: number;
+    retainedRecords?: number;
     byCause: {
+      old_age?: number;
       hunger: number;
       thirst: number;
       tiredness: number;
@@ -151,6 +153,7 @@ export interface AgentInViewEntity {
   dead?: boolean;
   currentGoal?: AgentGoal | null;
   currentAction?: string;
+  behavior?: { id: string; startedTick: number; stepIndex: number; stepTicksLeft: number } | null;
   // Movement data for interpolation
   movementStartPos?: { x: number; y: number } | null;
   targetPos?: { x: number; y: number } | null;
@@ -182,6 +185,7 @@ export interface EntitiesInViewResponse {
 
 export interface AgentTraits {
   visionRange: number;
+  circadianType?: 'diurnal' | 'nocturnal';
   memoryCapacity: number;
   memoryDecayRate: number;
   moveSpeed: number;
@@ -202,9 +206,18 @@ export interface AgentSummary {
   facing: number;
   sex: 'female' | 'male';
   age: number;
+  ageDays?: number;
+  birthTick?: number;
+  lifeStage?: 'juvenile' | 'adult' | 'elder';
+  species?: string;
+  templateId?: string;
+  lifespanDays?: number;
+  parentIds?: string[];
+  lastBirthTick?: number | null;
   state: string;
   currentGoal: AgentGoal | null;
   currentAction: string | null;
+  behavior?: { id: string; startedTick: number; stepIndex: number; stepTicksLeft: number } | null;
   targetId: string | null;
   actionTargetId: string | null;
   actionTicksRemaining: number;
@@ -213,6 +226,8 @@ export interface AgentSummary {
   tiredness: number;
   dead?: boolean;
   traits: AgentTraits;
+  effectiveVisionRange?: number;
+  temperatureC?: number;
   pathLength: number;
   pathIndex: number;
   pathRemaining: number;
@@ -244,6 +259,13 @@ export interface MemoryEntryCluster extends MemoryEntryBase {
 
 export type MemoryEntry = MemoryEntryEntity | MemoryEntryCluster;
 
+export interface CarriedFruit {
+  kind: 'fruit';
+  sourceId: string;
+  definitionId: string | null;
+  pickedTick: number;
+}
+
 export interface AgentDetail extends AgentSummary {
   currentTick: number;
   isMoving: boolean;
@@ -253,7 +275,7 @@ export interface AgentDetail extends AgentSummary {
   serverTime?: number;
   lastTickAt?: number | null;
   timelineTickAt?: number;
-  inventory: unknown[];
+  inventory: CarriedFruit[];
   memory: MemoryEntry[];
   path: { x: number; y: number }[];
 }
@@ -277,8 +299,8 @@ export interface DeathRecord {
   x: number;
   y: number;
   tick: number;
-  cause: 'hunger' | 'thirst' | 'tiredness' | 'unknown';
-  timestamp: number;
+  cause: 'old_age' | 'hunger' | 'thirst' | 'tiredness' | 'unknown';
+  timestamp: number | null;
 }
 
 export interface CellResponse {

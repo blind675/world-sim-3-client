@@ -32,6 +32,8 @@ interface Props {
   showClusterExtents: boolean;
   onToggleClusterExtents: (v: boolean) => void;
   tickCount: number;
+  population: { alive: number; births: number; cap: number } | null;
+  climate: { weather: string; temperatureC: number } | null;
   onShowTutorial: () => void;
   onShowStatistics: () => void;
 }
@@ -39,8 +41,8 @@ interface Props {
 function row(label: string, value: React.ReactNode) {
   return (
     <div className="flex justify-between gap-4 text-sm py-0.5 md:text-xs">
-      <span className="text-gray-400">{label}</span>
-      <span className="text-gray-100 tabular-nums">{value}</span>
+      <span className="shrink-0 text-gray-400">{label}</span>
+      <span className="min-w-0 break-words text-right text-gray-100 tabular-nums">{value}</span>
     </div>
   );
 }
@@ -279,12 +281,16 @@ export default function Sidebar({
   showClusterExtents,
   onToggleClusterExtents,
   tickCount,
+  population,
+  climate,
   onShowTutorial,
   onShowStatistics,
 }: Props) {
   const selectedRef = useRef<HTMLElement | null>(null);
   const selectedId = selectedAgent?.id;
   const selectedDefinition = objectCatalog?.definitions.find(definition => definition.id === (selectedObject?.definitionId ?? selectedObject?.type));
+  const carriedFruit = selectedAgent?.inventory?.[0];
+  const carriedSourceName = carriedFruit && (objectCatalog?.definitions.find(definition => definition.id === carriedFruit.definitionId)?.name ?? 'food source');
   useEffect(() => {
     if (selectedId && window.matchMedia('(max-width: 767px)').matches) {
       selectedRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
@@ -436,11 +442,16 @@ export default function Sidebar({
       <section className="bg-panelSoft rounded p-3">
         <h2 className="text-xs uppercase text-gray-400 mb-2">Simulation</h2>
         {row('ticks', tickCount)}
+        {population && row('living agents', `${population.alive} / ${population.cap}`)}
+        {population && row('births', population.births)}
         {row('world time', (() => {
           const ticksPerDay = meta?.simulation.ticksPerDay ?? 360;
           const minute = Math.floor((tickCount % ticksPerDay) * 1440 / ticksPerDay);
-          return `Day ${Math.floor(tickCount / ticksPerDay) + 1}, ${String(Math.floor(minute / 60)).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}`;
+          const hour = Math.floor(minute / 60);
+          return `Day ${Math.floor(tickCount / ticksPerDay) + 1}, ${String(hour).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')} (${hour >= 6 && hour < 18 ? 'day' : 'night'})`;
         })())}
+        {climate && row('weather', climate.weather.replaceAll('_', ' '))}
+        {climate && row('sea-level air', `${climate.temperatureC.toFixed(1)}°C`)}
         <div className="text-xs text-gray-500 pt-1">
           Running automatically
         </div>
@@ -456,7 +467,16 @@ export default function Sidebar({
             {row('x, y', `${selectedAgent.x}, ${selectedAgent.y}`)}
             {row('facing', `${((selectedAgent.facing * 180) / Math.PI).toFixed(0)}°`)}
             {row('sex', selectedAgent.sex)}
+            {selectedAgent.species && row('species', selectedAgent.species)}
+            {selectedAgent.lifeStage && row('life stage', selectedAgent.lifeStage)}
+            {selectedAgent.parentIds && selectedAgent.parentIds.length > 0
+              && row('parents', selectedAgent.parentIds.join(' + '))}
+            {row('age', `${selectedAgent.ageDays ?? selectedAgent.age} simulated days`)}
+            {selectedAgent.lifespanDays !== undefined && <>
+              {row('lifespan potential', `${selectedAgent.lifespanDays} days`)}
+            </>}
             {row('state', selectedAgent.state)}
+            {row('behavior', selectedAgent.behavior?.id?.replaceAll('_', ' ') ?? '—')}
             {row('goal', selectedAgent.currentGoal ? (
               <span>
                 {selectedAgent.currentGoal.type}
@@ -468,9 +488,13 @@ export default function Sidebar({
                 ) : null}
               </span>
             ) : '---')}
-            {row('action', selectedAgent.currentAction ?? '—')}
+            {row('action', selectedAgent.currentAction?.replaceAll('_', ' ') ?? '—')}
+            {row('carrying', carriedFruit ? `Fruit from ${carriedSourceName}` : 'Nothing')}
+            {carriedFruit && row('fruit source', carriedFruit.sourceId)}
             {row('path', `${selectedAgent.pathIndex} / ${selectedAgent.pathLength}`)}
-            {row('vision', selectedAgent.traits.visionRange)}
+            {row('sleep rhythm', selectedAgent.traits.circadianType ?? '—')}
+            {row('vision', `${selectedAgent.effectiveVisionRange ?? selectedAgent.traits.visionRange} / ${selectedAgent.traits.visionRange} cells`)}
+            {selectedAgent.temperatureC !== undefined && row('local air', `${selectedAgent.temperatureC.toFixed(1)}°C`)}
             {row('walking pace', `${selectedAgent.moveCellsPerStep ?? 1} cells / 2 ticks`)}
 
             <NeedsPanel agent={selectedAgent} />

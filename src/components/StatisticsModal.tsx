@@ -168,6 +168,10 @@ export default function StatisticsModal({ isOpen, onClose, meta }: Props) {
 
               <div className="space-y-2">
                 <div className="flex justify-between">
+                  <span className="text-gray-300">Old age:</span>
+                  <span className="text-white">{formatNumber(statistics.deaths.byCause.old_age ?? 0)}</span>
+                </div>
+                <div className="flex justify-between">
                   <span className="text-orange-400">Hunger:</span>
                   <span className="text-white">{formatNumber(statistics.deaths.byCause.hunger)}</span>
                 </div>
@@ -185,6 +189,12 @@ export default function StatisticsModal({ isOpen, onClose, meta }: Props) {
                     <span className="text-white">{formatNumber(statistics.deaths.byCause.unknown)}</span>
                   </div>
                 )}
+                {statistics.deaths.retainedRecords !== undefined
+                  && statistics.deaths.retainedRecords < statistics.deaths.total && (
+                    <div className="text-xs text-gray-400">
+                      Causes shown for the latest {formatNumber(statistics.deaths.retainedRecords)} deaths.
+                    </div>
+                  )}
               </div>
             </div>
 

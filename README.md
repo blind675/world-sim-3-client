@@ -26,7 +26,7 @@ npm run build
 ```
 
 The backend serves live simulation data. This repository renders and inspects it; see `src/lib/api.ts` for API calls. On a phone, swipe the map to pan, pinch or use the zoom buttons, and open **Layers & details** for display settings and agent details. **Find agent** opens a searchable list of living agents; selecting one centers and highlights it. Turn on **Follow agent** in its details to keep the camera centered as it moves. Panning turns follow off. Desktop retains the sidebar. PWA installation is future work.
-The public viewer does not send simulation control requests. Production controls must never embed a backend control token in `NEXT_PUBLIC_*` variables.
+The public viewer does not send simulation control requests. Production controls must never embed a backend control token in `NEXT_PUBLIC_*` variables. Agent details show the backend's active behavior when available; the viewer cannot edit live behavior rules.
 
 Open `/admin/world` to start a fresh simulation when all agents have died. It shows the current tick, living agents, and deaths, then requires a separate admin password and the phrase `RESET WORLD`. The browser sends the password only to this site's Next.js API route. The route checks it server-side and forwards the reset to Railway with the backend's bearer token. Set `WORLD_ADMIN_PASSWORD` to a strong, separate password and `CONTROL_API_TOKEN` to the existing Railway token in **Netlify server-side environment variables**. Neither belongs in `NEXT_PUBLIC_*` or the repository. Deploy the backend update first; the reset button needs its new `worldId` status field. If either Netlify secret is missing, the action fails closed. A reset replaces both durable snapshots and cannot be undone through the page; back up the Railway volume first if the old world matters. Ordinary map viewing remains public and read-only.
 
@@ -35,3 +35,10 @@ The map loads object names, colours, and sprite keys from the backend's read-onl
 Agent movement follows the server's path and tick timing between viewport updates. The viewer polls visible agents every 2–5 seconds, corrects from fresh server state, and holds at the end of a predicted route or after several ticks without an update. The backend should be deployed before this frontend so its timing fields and agent type are available. On Node.js 22.18 or newer, run the movement tests with `node --test test/*.test.mjs`.
 
 The milestone 3 backend can traverse several adjacent path cells per movement step. The viewer animates each segment along the actual route, including bends and wrapped edges, and displays the simulated day and time from the backend's 360-tick clock.
+
+The daily-rhythm backend reports ambient light and each agent's effective vision range. The web map dims terrain at night while keeping routes and entities readable, and the selected-agent panel shows its sleep preference and current/base vision. Older backend responses remain viewable without these optional fields.
+
+The climate backend also reports the day's weather, sea-level air temperature, and each agent's local temperature. The viewer shows these read-only values in the simulation and selected-agent panels when available.
+The selected-agent panel also shows the ground-bird species, life stage, simulated age, and lifespan potential when the milestone 8 backend is available. These optional fields keep the viewer compatible with older backend deployments.
+With the milestone 9 backend, the simulation panel shows living agents, cumulative births, and the population cap. A newborn's selected-agent details show its parent IDs. These fields are read-only and optional while an older backend is deployed.
+With the milestone 11 backend, selected-agent details show a carried fruit and its source, along with collecting or eating activity. Carrying and eating remain server-owned actions.
